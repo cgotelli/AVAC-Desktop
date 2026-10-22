@@ -67,7 +67,7 @@ class ProjectSession:
     variable: str = "depth"
     frame_index: int = 0
     map_extent: list[float] | None = None
-    layers: dict[str, bool] = field(default_factory=lambda: {"terrain": True, "release": True})
+    layers: dict[str, bool] = field(default_factory=lambda: {"terrain": True, "release": True, "mesh": False})
     raster_styles: dict = field(default_factory=dict)
     dirty: bool = False
     threads: int = field(default_factory=lambda: min(8, os.cpu_count() or 1))

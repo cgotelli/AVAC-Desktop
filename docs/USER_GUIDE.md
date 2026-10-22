@@ -61,6 +61,30 @@ stays unchanged. Without a CRS, releases, lakes, profiles and gauges are read in
 their existing XY coordinates without transformation. Ensure they align with
 the DEM. Unreferenced saved inputs and exported results retain an absent CRS.
 
+**Layers > Mesh** works in both modes and is off by default. During preparation
+it shows the AVAC base grid and, when enabled, the WAVE base grid using their
+configured cell sizes and fitted domains. It updates when parameters change;
+future adaptive refinement develops during the simulation and is not predicted
+in this preview.
+
+In Analyze, the overlay reads the actual saved native solver patches, including
+AMR refinement levels, and follows the selected time/frame and playback.
+AVAC uses blue/cyan and WAVE orange, with different colours for refinement
+levels. Combined views show both meshes and hold the avalanche's final mesh
+after its duration. The label reports each mesh's actual saved time. If native
+mesh snapshots are less frequent than result frames, the latest earlier mesh
+is held; geometry is never interpolated or guessed.
+
+Patch boundaries stay visible at normal zoom; individual cell lines appear
+when the cells are large enough on screen. Only visible lines are generated,
+with a drawing budget and bounded header cache. Very dense views ask you to
+zoom in. Mesh headers are read in the background, only while the layer is on;
+the overlay does not read additional solution or auxiliary arrays. Its choice
+persists with the project and is included in map images/videos. Time summaries
+such as maximum depth have no single corresponding adaptive mesh; select a
+time-dependent field to view it. Older runs without native binary patch headers
+show an availability message rather than an invented mesh.
+
 Create/import profile lines and point gauges from their analysis panels.
 Geometry is stored in shapefiles; keep all sidecars together. A `.prj` is not
 required for an unreferenced project. Profiles sample a

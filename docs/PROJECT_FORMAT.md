@@ -113,6 +113,10 @@ stores `lake`, `legends`, `scale` and `north` visibility.
 The `ui.layers.profiles` and `ui.layers.gauges` flags independently hide their
 map geometries and default to visible in older projects. They do not affect
 stored shapefiles or computed samples.
+`ui.layers.mesh` controls the preparation/result mesh overlay and defaults to
+false when absent. Native patch headers remain in their original run folders;
+only bounded in-memory display caches are created. No mesh geometry or sampled
+solution arrays are embedded in the project manifest.
 Optional `ui.result_page` selects Map (`analyze`), Profiles or Gauges, and
 `ui.analysis_kind` also accepts `combined`. The shared field/frame selection
 remains independent of this layout.
