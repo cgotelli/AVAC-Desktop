@@ -114,7 +114,6 @@ class MapView(QGraphicsView):
         self.lake_item = None
         self.mesh_items = []
         self.mesh_snapshot = None
-        self.mesh_text = ""
         self.decorations = dict(legends=True, scale=True, north=True)
         self.time_text = ""
         self.tool = "pan"
@@ -288,7 +287,6 @@ class MapView(QGraphicsView):
         self.scene().clear()
         self.mesh_items = []
         self.mesh_snapshot = None
-        self.mesh_text = ""
         self.additional_fields, self.additional_items = {}, {}
         self.lake_item = None
         self.analysis_items = []
@@ -367,7 +365,6 @@ class MapView(QGraphicsView):
     def set_mesh(self, snapshot):
         from .mesh_view import MeshItem
         self.mesh_snapshot = snapshot
-        self.mesh_text = snapshot.description() if snapshot is not None else ""
         if not self.terrain:
             return
         origin = (float(self.terrain.raster.metadata['xmin']), float(self.terrain.raster.metadata['ymax']))
@@ -752,20 +749,6 @@ class MapView(QGraphicsView):
         dpr = self.viewport().devicePixelRatioF()
         # QPainter's resetTransform preserves devicePixelRatio; use logical px.
         w, h = self.viewport().width(), self.viewport().height()
-        if self.mesh_text:
-            text = self.mesh_text
-            if any(item.too_dense for item in self.mesh_items):
-                text += ' · Dense mesh: zoom in'
-            elif self.mesh_snapshot.layers:
-                text += ' · Cell lines on zoom'
-            metrics = painter.fontMetrics()
-            text = metrics.elidedText(text, Qt.ElideRight, max(80, w-160))
-            box = QRectF(12, 60 if self.model_tools else 12, metrics.horizontalAdvance(text)+16, metrics.height()+10)
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QColor(LEGEND_BLUE))
-            painter.drawRoundedRect(box, 5, 5)
-            painter.setPen(QColor('#f0f7fc'))
-            painter.drawText(box.adjusted(8, 0, -8, 0), Qt.AlignVCenter, text)
         if self.decorations.get("north", True):
             painter.save()
             painter.translate(w-98, 12)

@@ -223,7 +223,7 @@ def installer_files():
     for name in ("INSTALL.txt", "LICENSE", "DISCLAIMER.txt", "THIRD_PARTY_NOTICES.md"):
         path = STAGE/name
         rows[name] = dict(path=name, bytes=path.stat().st_size, sha256=sha(path))
-    write_json(STAGE/"INSTALLATION_FILES.json", dict(format=1, version="0.1.2-preview.1", files=list(rows.values())))
+    write_json(STAGE/"INSTALLATION_FILES.json", dict(format=1, version="0.1.3-preview.1", files=list(rows.values())))
     paths = [Path(name) for name in rows]+[Path("INSTALLATION_FILES.json")]
     directories = set()
     for path in paths:

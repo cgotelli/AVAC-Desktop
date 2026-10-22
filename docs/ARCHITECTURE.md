@@ -61,14 +61,22 @@ display without adding unlike physical quantities or resampling their grids.
 `sampling_cache.py` stores derived samples with source/geometry identities.
 `video_export.py` uses Qt Multimedia for map and profile MP4 export.
 
-`mesh.py` reads only native `fort.t` time metadata and binary-output `fort.q`
-patch headers, lazily through the existing frame worker. Immutable patch arrays
-use an eight-snapshot/4 MiB cache per solver, and combine on the native result
-timeline. Preparation fits the base grids from metadata using the existing
-AVAC/WAVE domain rules. `mesh_view.py` batches each solver mesh into one graphics
-item, culls against the viewport, caches unchanged geometry and bounds cell-line
-work in screen space. It never allocates one item per cell or loads native
-solution arrays. Mesh-off frames do not request mesh metadata.
+`mesh.py` runs the verified AVAC executable with `AVAC_INITIAL_MESH_ONLY=1`
+in an owned temporary sibling of `_output`, using copies of the prepared
+controls and their existing relative input references. After normal native
+grid initialization, `amr2.f90` writes seven geometry columns and exits before
+`valout` or `tick`; it writes no solution arrays. Only `AVAC/initial_mesh.txt`
+is retained. Cancellation terminates the owned process. Normal execution
+removes the inspection environment flag. Inspection is opt-in and cached per
+prepared run; changed inputs require preparation again.
+
+At t=0, `flag2refine2.f90` refines wet AVAC release cells through the configured
+levels even though their initial velocity is zero. The branch is guarded by
+`conserve_depth_amr` and leaves WAVE criteria unchanged. After t=0 the existing
+speed/energy criteria apply. `mesh_view.py` batches the static initial patches
+into one graphics item, clips against the viewport and bounds cell-line work.
+The overlay is removed on entering Analyze. Results readers, frame workers
+and video export have no mesh path, mesh time index or mesh cache.
 
 ## Numerical source and distribution
 

@@ -1,11 +1,11 @@
 {
   "kind": "WAVE",
   "platform": "windows-amd64",
-  "runtime_version": "0.1.3",
-  "archive": "wave-desktop-windows-amd64-0.1.3.tar.gz",
-  "runtime_manifest_sha256": "891f51fc370d8503eeb3d0ab2c2dcf7667980cde3e99730d06589bc92a4ffe94",
+  "runtime_version": "0.1.4",
+  "archive": "wave-desktop-windows-amd64-0.1.4.tar.gz",
+  "runtime_manifest_sha256": "909f074f1aadf6fea71e1cfc37251a37140ffa18b1e595ddaaf3a76f6ebc8cf9",
   "source_repository": "https://github.com/cgotelli/AVAC-Desktop",
-  "source_tree_sha256": "5ab003721b69c2890c71908f6ca8258320185398b3968f5724adea0c1b6e2224",
+  "source_tree_sha256": "33fe4cee76379429b419948d552cd193411edb0978867de21a4bd079a9e2b164",
   "python_layout": "compact-clawpack-packages-v1",
   "build_toolchain": "WinLibs GCC 13.2.0 / MinGW-w64 11.0.1 UCRT POSIX SEH r8"
 }

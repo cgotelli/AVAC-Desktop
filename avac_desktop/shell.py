@@ -64,12 +64,12 @@ class MainWindow(QMainWindow):
         self.gauge = None
         self._dataset_identity = ""
         self._result_sources = {}
-        self._result_mesh = None
-        self._result_mesh_key = None
         self._lake_rings = []
         self._video_export = None
+        self._pending_initial_mesh = False
+        self._initial_mesh = None
+        self._initial_mesh_run = None
         self._pending_frame = False
-        self._pending_mesh = False
         self._run_plan = None
         self._pipeline_active = False
         self._pipeline_snapshot = None
@@ -128,15 +128,14 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(self.terrain_check)
         left_layout.addWidget(self.release_check)
         self.layer_checks = {"terrain": self.terrain_check, "release": self.release_check}
-        for key, title in (("lake", "Lake polygon"), ("mesh", "Mesh"), ("profiles", "Profiles"), ("gauges", "Gauges"),
+        for key, title in (("lake", "Lake polygon"), ("mesh", "Initial mesh"), ("profiles", "Profiles"), ("gauges", "Gauges"),
                            ("legends", "Legends"), ("scale", "Scale bar"), ("north", "North arrow")):
             check = QCheckBox(title)
             check.setChecked(self.session.layers.get(key, key != "mesh"))
             if key == "mesh":
-                check.setToolTip("Show computational base grids during preparation and saved adaptive solver patches in results. "
-                                 "AVAC is blue/cyan; WAVE is orange. Levels use different colours. "
-                                 "Zoom in for cell lines. Future refinement is not predicted in preparation. "
-                                 "Mesh headers are read only while this layer is enabled.")
+                check.setToolTip("Inspect the actual initial AVAC mesh after Prepare, before Run. "
+                                 "AMR levels use different colours; zoom in for cells. "
+                                 "Available only in Preparation & Run.")
             check.toggled.connect(lambda value, k=key: self._layer(k, value))
             left_layout.addWidget(check)
             self.layer_checks[key] = check
@@ -394,7 +393,7 @@ class MainWindow(QMainWindow):
         help_menu = self.help_menu = self.main_menu.addMenu("Help")
         help_menu.addAction("Load tutorial", self.load_tutorial)
         help_menu.addAction("License and scientific-use notice", self.show_license_notice)
-        help_menu.addAction("About AVAC Desktop", lambda: QMessageBox.about(self, "AVAC Desktop", "AVAC Desktop 0.1.2\nFree software: AGPL-3.0-or-later.\nProvided without warranty, to the extent permitted by law.\nScientific desktop development build; not a certified hazard assessment.\nSee Help → License and scientific-use notice."))
+        help_menu.addAction("About AVAC Desktop", lambda: QMessageBox.about(self, "AVAC Desktop", "AVAC Desktop 0.1.3\nFree software: AGPL-3.0-or-later.\nProvided without warranty, to the extent permitted by law.\nScientific desktop development build; not a certified hazard assessment.\nSee Help → License and scientific-use notice."))
         # PySide 6.8 can invalidate a menu when an ephemeral menuAction wrapper
         # is collected after QAction.menu(); retain those wrappers explicitly.
         self._menu_actions = self.main_menu.actions()
@@ -424,8 +423,8 @@ class MainWindow(QMainWindow):
         self.timeline.setVisible(mode == "analyze")
         self.viewport_title.setText("Terrain & release geometry" if mode == "model_run" else "Map")
         self._navigate(selected)
+        self._refresh_mesh()
         if changed:
-            self._refresh_mesh()
             self.session.dirty = True
 
     def _navigate(self, row: int):
@@ -708,7 +707,7 @@ class MainWindow(QMainWindow):
         if key in ("legends", "scale", "north"):
             self.map.decorations[key] = visible
             self.map.viewport().update()
-        if key == "mesh" and (changed or self.session.mode == "model_run"):
+        if key == "mesh":
             self._refresh_mesh()
         if changed:
             self.session.dirty = True
@@ -724,34 +723,50 @@ class MainWindow(QMainWindow):
             self._layer(key, check.isChecked())
 
     def _refresh_mesh(self):
-        if not self.session.layers.get("mesh", False):
+        from .mesh import MeshSnapshot, inspect_initial_mesh
+        preparation = self.session.mode == "model_run"
+        self.layer_checks["mesh"].setVisible(preparation)
+        if not preparation or not self.session.layers.get("mesh", False):
             self.map.set_mesh(None)
-        elif self.session.mode == "model_run":
-            from .mesh import preparation_mesh
-            self.map.set_mesh(preparation_mesh(self.session))
-        elif self.results:
-            if self.current_raster is not None and self.current_time is None and not self.tasks.active:
-                from .mesh import MeshSnapshot
-                self.map.set_mesh(MeshSnapshot(notice="Select a time-dependent result to view the solver mesh."))
+            return
+        root = self.session.prepared_run
+        if root is None or self.session.prepared_signature != simulation.signature(self.session):
+            self.map.set_mesh(MeshSnapshot(notice="Prepare the run to inspect its initial mesh."))
+            return
+        if self._initial_mesh_run == root and self._initial_mesh is not None:
+            self.map.set_mesh(self._initial_mesh)
+            return
+        if self.job.running:
+            self.map.set_mesh(MeshSnapshot(notice="Prepare a new run to inspect its initial mesh."))
+            return
+        self.map.set_mesh(MeshSnapshot(notice="Building initial mesh; no time steps are taken…"))
+        if self.tasks.active:
+            self._pending_initial_mesh = True
+            return
+        snapshot = self._snapshot()
+        expected_signature = snapshot.prepared_signature
+        def done(mesh):
+            if self.session.prepared_run != root or simulation.signature(self.session) != expected_signature:
                 return
-            key = (self.results, self.session.frame_index, self.current_time is not None)
-            if self._result_mesh_key == key and self._result_mesh is not None:
-                self.map.set_mesh(self._result_mesh)
+            if not mesh.layers:
+                self._append_log(mesh.notice)
+                if self.session.mode == "model_run" and self.session.layers.get("mesh", False):
+                    self.map.set_mesh(mesh)
                 return
-            # The frame worker handles IO; toggling during another task queues
-            # one refresh rather than starting an overlapping read.
-            if self.tasks.active:
-                self._pending_mesh = True
-            elif not self._video_export:
-                results, index = self.results, self.session.frame_index
-                def done(snapshot):
-                    if self.results is results and self.session.frame_index == index and self.current_time is not None:
-                        self._result_mesh, self._result_mesh_key = snapshot, (results, index, True)
-                        if self.session.mode == "analyze" and self.session.layers.get("mesh", False):
-                            self.map.set_mesh(snapshot)
-                self.tasks.submit(lambda task: results.mesh(index), done, passive=True)
-        else:
-            self.map.set_mesh(None)
+            self._initial_mesh, self._initial_mesh_run = mesh, root
+            levels = sorted(set(map(int, mesh.layers[0].patches[:, 6])))
+            message = f"Initial AVAC mesh: levels {levels}, {len(mesh.layers[0].patches)} patches. No time steps taken."
+            if max(levels) < int(snapshot.configuration['computation']['refinement']):
+                message += " Warning: the initial mesh does not reach the requested refinement level. Check release depth and dry tolerance."
+            self._append_log(message)
+            if self.session.mode == "model_run" and self.session.layers.get("mesh", False):
+                self.map.set_mesh(mesh)
+        def work(task):
+            try:
+                return inspect_initial_mesh(snapshot, task)
+            except (OSError, ValueError) as exc:
+                return MeshSnapshot(notice=f"Initial mesh unavailable: {exc}")
+        self.tasks.submit(work, done)
 
     def _update_background_availability(self):
         terrain = self.map.terrain
@@ -781,8 +796,7 @@ class MainWindow(QMainWindow):
         self._prepared_wave = None
         self._run_plan = None
         self._update_project()
-        if self.session.mode == "model_run":
-            self._refresh_mesh()
+        self._refresh_mesh()
 
     def _task_error(self, text):
         self._sync_dataset_selector()
@@ -854,6 +868,7 @@ class MainWindow(QMainWindow):
                 self.session.selected_run = result["source"]
                 message = f"Matching completed avalanche reused:\n{result['source']}\n\nWAVE prepared:\n{result['wave'][0]}"
             self.panels.run_info.setText(message)
+            self._refresh_mesh()
             self.status_label.setText("Prepared")
             self._append_log(message)
         def work(worker):
@@ -925,14 +940,15 @@ class MainWindow(QMainWindow):
     def _task_finished(self, busy):
         if not busy:
             self.global_stop.setEnabled(self.job.running or self._pipeline_active or self._video_export is not None)
+        if not busy and self._pending_initial_mesh:
+            self._pending_initial_mesh = False
+            QTimer.singleShot(0, self._refresh_mesh)
+            return
         if self._pending_frame and not busy:
             self._pending_frame = False
             QTimer.singleShot(0, lambda: self._frame_changed(self.slider.value()))
         elif not busy and not self._pipeline_active and not self._video_export:
             QTimer.singleShot(0, self._sample_gauge)
-        if not busy and self._pending_mesh:
-            self._pending_mesh = False
-            QTimer.singleShot(0, self._refresh_mesh)
 
     def _job_state(self, state):
         self.status_label.setText(state.capitalize())
@@ -1151,7 +1167,7 @@ class MainWindow(QMainWindow):
             index = min(max(desired_index, 0), len(result.discovery.frames)-1)
             variables = self._result_variables(result, kind)
             variable = desired_variable if desired_variable in variables else variables[0]
-            frame = self._read_frame(result, variable, index, include_mesh=bool(snapshot.layers.get("mesh", False)))
+            frame = self._read_frame(result, variable, index)
             image = None if terrain is map_terrain else terrain_display(terrain)
             return result, frame, terrain, image, index, self._read_sampling_paths(terrain.raster.crs_authid), lake, rings, identity, avac_root, wave_root, variable, variables
         def done(bundle):
@@ -1201,24 +1217,14 @@ class MainWindow(QMainWindow):
         return variables
 
     @staticmethod
-    def _read_frame(results, variable, index, *, include_mesh=False):
-        from .mesh import MeshSnapshot
+    def _read_frame(results, variable, index):
         if hasattr(results, "overlays"):
             overlays = results.overlays(variable, index)
-            raster, overlays = overlays[1], overlays
-        else:
-            raster, overlays = results.raster(variable, index), None
-        mesh = None
-        if include_mesh:
-            mesh = results.mesh(index) if raster[0] is not None else MeshSnapshot(
-                notice="Select a time-dependent result to view the solver mesh.")
-        return raster, overlays, mesh
+            return overlays[1], overlays
+        return results.raster(variable, index), None
 
     def _display_frame(self, frame):
-        (time, raster), overlays, mesh = frame
-        key = (self.results, self.session.frame_index, time is not None)
-        if mesh is not None or self._result_mesh_key != key:
-            self._result_mesh, self._result_mesh_key = mesh, key
+        (time, raster), overlays = frame
         self.current_raster = raster
         self.current_variable, self.current_time = self.session.variable, time
         self.map.clear_additional_fields()
@@ -1233,10 +1239,6 @@ class MainWindow(QMainWindow):
         self.map.time_text = self.time_label.text()
         self._update_temporal_controls()
         self.map.set_analysis_features(self.session.analysis_features)
-        if self.session.mode == "analyze":
-            self.map.set_mesh(self._result_mesh if self.session.layers.get("mesh", False) else None)
-        else:
-            self._refresh_mesh()
         self._sample_profile()
 
     def _read_sampling_paths(self, crs):
@@ -1261,8 +1263,7 @@ class MainWindow(QMainWindow):
         def done(frame):
             if self.results is results and self.session.variable == variable and self.session.frame_index == index:
                 self._display_frame(frame)
-        include_mesh = bool(self.session.layers.get("mesh", False))
-        self.tasks.submit(lambda task: self._read_frame(results, variable, index, include_mesh=include_mesh), done, passive=True)
+        self.tasks.submit(lambda task: self._read_frame(results, variable, index), done, passive=True)
 
     def _variable_changed(self):
         if self.variable.currentData():
@@ -1564,8 +1565,7 @@ class MainWindow(QMainWindow):
                 self._display_frame(frame)
                 # Let pyqtgraph lay out the current frame before capturing.
                 QTimer.singleShot(0, lambda: ready(self.map.export_image() if page == "analyze" else chart.grab().toImage()))
-            include_mesh = bool(self.session.layers.get("mesh", False))
-            self.tasks.submit(lambda task: self._read_frame(results, variable, index, include_mesh=include_mesh), done, passive=True)
+            self.tasks.submit(lambda task: self._read_frame(results, variable, index), done, passive=True)
         video = self._video_export = VideoExport(path, size, self.fps.value(), len(self.results.discovery.frames), render, self)
         def cleanup():
             self._video_export = None
@@ -1737,13 +1737,13 @@ class MainWindow(QMainWindow):
         self._lake_rings = []
         self._dataset_identity = ""
         self._result_sources = {}
-        self._result_mesh = None
-        self._result_mesh_key = None
         self.current_variable, self.current_time = "terrain_elevation", None
         self.profile = self.gauge = None
+        self._pending_initial_mesh = False
+        self._initial_mesh = None
+        self._initial_mesh_run = None
         self._pending_frame = False
         self._prepared_wave = None
-        self._pending_mesh = False
         self._run_plan = None
         self._pipeline_active = False
         self._pipeline_snapshot = None

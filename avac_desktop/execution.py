@@ -67,7 +67,7 @@ class NativeJob(QObject):
         self.expected_fgout = int(config["animation"]["n_out"]) if kind == "AVAC" else self.expected
         self.root, self.cancel_requested, self.tail, self.fatal = root, False, "", None
         environment = QProcessEnvironment.systemEnvironment()
-        for key in ("CLAW", "CLAW_PYTHON", "FC", "PYTHONPATH"):
+        for key in ("CLAW", "CLAW_PYTHON", "FC", "PYTHONPATH", "AVAC_INITIAL_MESH_ONLY"):
             environment.remove(key)
         runtime = Path(metadata["runtime"])
         environment.insert("OMP_NUM_THREADS", str(threads))

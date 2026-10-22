@@ -30,9 +30,3 @@ class CombinedResults:
         if variable != "surface_displacement":
             raise ValueError("Use Avalanche or Waves to inspect other result fields.")
         return self.water.gauge(x, y, variable, task)
-
-    def mesh(self, index):
-        from .mesh import MeshSnapshot
-        snow = self.avalanche.mesh(int(self.indices[index]))
-        water = self.water.mesh(index)
-        return MeshSnapshot(snow.layers+water.layers, ' | '.join(s for s in (snow.notice, water.notice) if s))

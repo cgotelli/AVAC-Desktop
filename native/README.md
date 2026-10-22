@@ -14,8 +14,11 @@ UI default is under `avac_desktop/resources/`.
 - The upstream root and component license texts.
 
 Examples, tests, generated files, notebooks and unused solver trees are
-excluded. Numerical source bytes are retained, including existing local
-Windows-build/WAVE support changes. Preserve those changes when updating from
+excluded. Existing local Windows-build/WAVE support changes are retained.
+Desktop additionally refines wet AVAC release cells at t=0 (snow starts at
+rest) and supports an initialization-only mesh export through
+`AVAC_INITIAL_MESH_ONLY=1`. The export exits before result output or time
+stepping; WAVE's refinement criteria are unchanged. Preserve these changes when updating from
 upstream [Clawpack 5.14.0](https://github.com/clawpack/clawpack/tree/v5.14.0).
 Third-party files retain their original licenses.
 

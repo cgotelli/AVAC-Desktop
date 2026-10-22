@@ -51,6 +51,28 @@ data. Save As to another folder copies project-owned inputs and results. Older
 projects that still refer to external inputs need one Save while those inputs
 remain available. See [project format](PROJECT_FORMAT.md) for details.
 
+**Layers > Initial mesh** is available only in Preparation & Run and is off
+by default. Enable it and select **Prepare** (or enable it after preparation).
+The application asks the native AVAC solver to initialize its grids in a
+temporary directory, stops before any time steps, and displays the actual
+patches. Check that the finer patches cover the snow releases. Each level has
+a different colour. The map shows only mesh lines, without a mesh annotation.
+With one AMR level selected,
+the mesh is uniform. Increase the refinement level under Numerics if needed.
+
+Snow starts at rest, so initial AVAC refinement explicitly flags release cells
+with depth above the dry tolerance through the requested AMR levels. Normal
+speed/energy criteria control refinement after initialization. This corrects
+the previous behaviour where refinement first appeared after the snow moved;
+new AMR runs may therefore differ from earlier runs. WAVE refinement is unchanged.
+
+Patch boundaries remain visible at normal zoom; cell lines appear when large
+enough on screen. Drawing is clipped and bounded. The initial geometry is
+cached at `runs/<run>/AVAC/initial_mesh.txt`. Changing scientific inputs hides
+the stale snapshot until preparation is repeated. The inspection is optional,
+does not start or complete a simulation, and never writes to its result folder.
+Analyze has no mesh overlay or mesh reads during frame loading or playback.
+
 ## Analyze
 
 Select the result variable and frame/time. The map palette, opacity, limits and
@@ -60,30 +82,6 @@ access and a geographic CRS and carry provider attribution; numerical terrain
 stays unchanged. Without a CRS, releases, lakes, profiles and gauges are read in
 their existing XY coordinates without transformation. Ensure they align with
 the DEM. Unreferenced saved inputs and exported results retain an absent CRS.
-
-**Layers > Mesh** works in both modes and is off by default. During preparation
-it shows the AVAC base grid and, when enabled, the WAVE base grid using their
-configured cell sizes and fitted domains. It updates when parameters change;
-future adaptive refinement develops during the simulation and is not predicted
-in this preview.
-
-In Analyze, the overlay reads the actual saved native solver patches, including
-AMR refinement levels, and follows the selected time/frame and playback.
-AVAC uses blue/cyan and WAVE orange, with different colours for refinement
-levels. Combined views show both meshes and hold the avalanche's final mesh
-after its duration. The label reports each mesh's actual saved time. If native
-mesh snapshots are less frequent than result frames, the latest earlier mesh
-is held; geometry is never interpolated or guessed.
-
-Patch boundaries stay visible at normal zoom; individual cell lines appear
-when the cells are large enough on screen. Only visible lines are generated,
-with a drawing budget and bounded header cache. Very dense views ask you to
-zoom in. Mesh headers are read in the background, only while the layer is on;
-the overlay does not read additional solution or auxiliary arrays. Its choice
-persists with the project and is included in map images/videos. Time summaries
-such as maximum depth have no single corresponding adaptive mesh; select a
-time-dependent field to view it. Older runs without native binary patch headers
-show an availability message rather than an invented mesh.
 
 Create/import profile lines and point gauges from their analysis panels.
 Geometry is stored in shapefiles; keep all sidecars together. A `.prj` is not

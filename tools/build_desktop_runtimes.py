@@ -25,7 +25,7 @@ from avac_desktop.core.runtime import runtime_manifest_sha256
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--toolchain",type=Path,required=True)
-    parser.add_argument("--version",default="0.1.3")
+    parser.add_argument("--version",default="0.1.4")
     args = parser.parse_args()
     output = ROOT/"avac_desktop"/"resources"
     output.mkdir(parents=True,exist_ok=True)

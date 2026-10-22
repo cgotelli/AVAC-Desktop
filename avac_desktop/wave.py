@@ -118,7 +118,6 @@ class WaveResults:
         self.cache = {}
         self.cache_bytes = 128*1024*1024
         self.cache_size = 0
-        self._mesh = None
         import sys
         from avac_desktop.core.runtime import validate_runtime
         from avac_desktop.core.clawpack_logging import suppress_pyclaw_file_logging
@@ -139,12 +138,6 @@ class WaveResults:
         self.initial_surface = initial[4]+initial[3]
         self.initial_wet = initial[1], initial[2], initial[3] > 0
         self._lake_outline = None
-
-    def mesh(self, index):
-        from .mesh import SolverMesh
-        if self._mesh is None:
-            self._mesh = SolverMesh(self.discovery.output, 'WAVE')
-        return self._mesh.snapshot(self.discovery.frames[index].time_seconds)
 
     def lake_outline(self):
         """Recover legacy scenarios' initial wet-cell boundary without disk IO."""

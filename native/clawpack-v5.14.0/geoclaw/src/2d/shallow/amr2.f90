@@ -91,6 +91,8 @@ program amr2
 
     use amr_module, only: t0, tstart_thisrun
     use amr_module, only: tick_clock_start, tick_cpu_start
+    use amr_module, only: node, rnode, lstart, levelptr
+    use amr_module, only: ndilo, ndihi, ndjlo, ndjhi, cornxlo, cornylo
 
 
     ! Data modules
@@ -116,6 +118,8 @@ program amr2
     integer :: omp_get_max_threads, maxthreads
     real(kind=8) :: time, ratmet, cut, dtinit, dt_max
     logical :: vtime, rest, output_t0    
+    character(len=1) :: mesh_only
+    integer :: mesh_status, mesh_length, mesh_unit, mesh_patch
 
     ! Timing variables
     integer(kind=8) :: clock_start, clock_finish, clock_rate, ttotal, count_max
@@ -623,6 +627,29 @@ program amr2
     if (mcapa > 0) write(outunit,"(' capacity fn. is aux. var',i9)") mcapa
 
     print *, ' '
+    ! Optional preparation inspection: export only the initialized patch
+    ! geometry, before valout or tick. No physical time steps or result arrays
+    ! are written. The desktop invokes this in a separate owned directory.
+    call get_environment_variable('AVAC_INITIAL_MESH_ONLY', mesh_only, &
+                                 length=mesh_length, status=mesh_status)
+    if (mesh_status == 0 .and. mesh_length == 1 .and. mesh_only == '1') then
+        open(newunit=mesh_unit, file='initial_mesh.txt', status='replace')
+        do level = 1, lfine
+            mesh_patch = lstart(level)
+            do while (mesh_patch /= 0)
+                write(mesh_unit, '(2(es24.16e3,1x),2(i12,1x),2(es24.16e3,1x),i6)') &
+                    rnode(cornxlo,mesh_patch), rnode(cornylo,mesh_patch), &
+                    node(ndihi,mesh_patch)-node(ndilo,mesh_patch)+1, &
+                    node(ndjhi,mesh_patch)-node(ndjlo,mesh_patch)+1, &
+                    hxposs(level), hyposs(level), level
+                mesh_patch = node(levelptr,mesh_patch)
+            enddo
+        enddo
+        close(mesh_unit)
+        print *, 'Initial mesh inspection complete; no time steps taken.'
+        stop
+    endif
+
     print *, 'Done reading data, starting computation ...  '
     print *, ' '
 

@@ -15,8 +15,8 @@ scientific services and solver sources originated.
 - Configure avalanche rheology, numerical settings and simulation output.
 - Run the native AVAC solver and optionally its coupled WAVE solver.
 - View results on a map, step through time, and sample profiles and gauges.
-- Toggle the computational mesh: base grids in preparation and saved adaptive
-  patches synchronized with time in results, with zoom-dependent cell lines.
+- Inspect the initial AVAC mesh before running, including refinement around
+  snow releases. Cell lines appear as you zoom in.
 - Export result rasters, figures, sample data and map/profile videos.
 - Keep inputs, configuration, sampling geometry and results together in a
   project folder. Completed results reopen automatically with the project.
@@ -30,7 +30,7 @@ need independent validation. Read [limitations](docs/LIMITATIONS.md) and the
 ## Windows installer
 
 Download the setup EXE and its SHA-256 checksum from
-[the latest preview release](https://github.com/cgotelli/AVAC-Desktop/releases/tag/v0.1.2-preview.1).
+[the latest preview release](https://github.com/cgotelli/AVAC-Desktop/releases/tag/v0.1.3-preview.1).
 The offline installer includes Python, GIS/UI libraries and both native solvers.
 It is unsigned; Windows may show an unknown-publisher notice.
 

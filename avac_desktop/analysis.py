@@ -55,13 +55,6 @@ class Results:
         self.cache_bytes = cache_bytes
         self.cache: OrderedDict[int, tuple] = OrderedDict()
         self.cache_size = 0
-        self._mesh = None
-
-    def mesh(self, index):
-        from .mesh import SolverMesh
-        if self._mesh is None:
-            self._mesh = SolverMesh(self.discovery.output_dir, 'AVAC')
-        return self._mesh.snapshot(self.discovery.frames[index].time_seconds)
 
     def frame(self, index: int):
         if not 0 <= index < len(self.discovery.frames):

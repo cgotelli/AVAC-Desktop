@@ -131,6 +131,16 @@ subroutine flag2refine2(mx,my,mbc,mbuff,meqn,maux,xlower,ylower,dx,dy,t,level, &
 
             if (q(1,i,j) > dry_tolerance) then
 
+                ! Snow is initially at rest, so speed-only refinement would
+                ! leave the release on the coarse grid until it starts moving.
+                ! Initialize all requested AMR levels over wet release cells.
+                ! conserve_depth_amr identifies AVAC's granular formulation;
+                ! WAVE retains its established water refinement criteria.
+                if (conserve_depth_amr .and. t == t0) then
+                    amrflags(i,j) = DOFLAG
+                    cycle x_loop
+                endif
+
                 if(adjoint_flagging) then
                     if(aux(innerprod_index,i,j) > tolsp) then
                         amrflags(i,j) = DOFLAG

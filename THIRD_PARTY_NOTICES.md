@@ -16,6 +16,9 @@ existing source tree, including its local Windows build and WAVE fast-path
 support. This is not a claim that the subset is an unmodified upstream release.
 The PyClaw initializer additionally omits its unconditional `IOTest` import;
 the upstream test suite is excluded from this source subset.
+Desktop also modifies `geoclaw/src/2d/shallow/flag2refine2.f90` to refine wet
+AVAC release cells at initialization, and `amr2.f90` to provide an optional
+initialization-only patch geometry export before output or time stepping.
 See [native source notes](native/README.md).
 
 ## Windows native runtime libraries
