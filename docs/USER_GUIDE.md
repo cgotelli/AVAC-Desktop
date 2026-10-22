@@ -5,6 +5,15 @@ and **Analyze** for exploring its results. **Edit > Settings** changes defaults
 for future projects and switches between light and dark appearance. Each saved
 project retains its own configuration.
 
+## Tutorial
+
+Choose **Help > Load tutorial** to load the included Alpine terrain and snow
+release polygons. This works offline in the Windows installation. Review the
+parameters, then save the project in a writable folder of your own before
+preparing and running. Save copies the tutorial inputs into your project;
+edits and results stay there. You can load the tutorial again for a fresh case.
+For source checkouts, run `python tools/fetch_tutorial.py` once first.
+
 ## Prepare and run
 
 1. Import a terrain DEM in **Terrain & release**. It must be north-up and have

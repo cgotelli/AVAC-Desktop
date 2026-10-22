@@ -3,10 +3,13 @@ from PyInstaller.utils.hooks import collect_submodules
 from pathlib import Path
 import sys
 import json
+import runpy
 
 hiddenimports = []
 hiddenimports += collect_submodules('osgeo')
 runtime_data = []
+tutorial = runpy.run_path(str(Path(SPECPATH)/'tools/fetch_tutorial.py'))
+tutorial_data = [(str(path), 'tutorial') for path in tutorial['verify_tutorial'](Path(SPECPATH)/'tutorial')]
 for kind in ('avac','wave'):
     descriptor = Path('avac_desktop/resources')/f'{kind}-runtime.json'
     identity = json.loads(descriptor.read_text(encoding='utf-8'))
@@ -22,7 +25,7 @@ a = Analysis(
            ('avac_desktop/resources/AVAC_app_icon.png', 'avac_desktop/resources'),
            ('avac_desktop/resources/spin-*.svg', 'avac_desktop/resources'),
            (str(Path(sys.prefix)/'Library/share/proj'), 'Library/share/proj'), ('LICENSE', '.'),
-           ('DISCLAIMER.txt', '.'), ('THIRD_PARTY_NOTICES.md', '.')]+runtime_data,
+           ('DISCLAIMER.txt', '.'), ('THIRD_PARTY_NOTICES.md', '.')]+runtime_data+tutorial_data,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={'matplotlib': {'backends': ['Agg']}},

@@ -12,7 +12,7 @@ def resource_root() -> Path:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description='AVAC Desktop')
     parser.add_argument('project', nargs='?', type=Path)
-    parser.add_argument('--tutorial', action='store_true', help='Load the optional tutorial dataset')
+    parser.add_argument('--tutorial', action='store_true', help='Load the included tutorial dataset')
     parser.add_argument('--appearance', choices=('light', 'dark'), help='Override appearance for this session')
     args = parser.parse_args(argv)
     app = QApplication.instance() or QApplication(sys.argv[:1])

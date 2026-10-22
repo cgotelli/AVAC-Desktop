@@ -393,7 +393,7 @@ class MainWindow(QMainWindow):
         help_menu = self.help_menu = self.main_menu.addMenu("Help")
         help_menu.addAction("Load tutorial", self.load_tutorial)
         help_menu.addAction("License and scientific-use notice", self.show_license_notice)
-        help_menu.addAction("About AVAC Desktop", lambda: QMessageBox.about(self, "AVAC Desktop", "AVAC Desktop 0.1.3\nFree software: AGPL-3.0-or-later.\nProvided without warranty, to the extent permitted by law.\nScientific desktop development build; not a certified hazard assessment.\nSee Help → License and scientific-use notice."))
+        help_menu.addAction("About AVAC Desktop", lambda: QMessageBox.about(self, "AVAC Desktop", "AVAC Desktop 0.1.4\nFree software: AGPL-3.0-or-later.\nProvided without warranty, to the extent permitted by law.\nScientific desktop development build; not a certified hazard assessment.\nSee Help → License and scientific-use notice."))
         # PySide 6.8 can invalidate a menu when an ephemeral menuAction wrapper
         # is collected after QAction.menu(); retain those wrappers explicitly.
         self._menu_actions = self.main_menu.actions()
@@ -526,7 +526,7 @@ class MainWindow(QMainWindow):
         from .app import resource_root
         root = resource_root()/"tutorial"
         if not all((root/name).is_file() for name in ("topo_cut_dam_1m.tif", "avalanches.geojson")):
-            QMessageBox.information(self, "Optional tutorial data", "The tutorial dataset is a separate download. In a source checkout, run python tools/fetch_tutorial.py, then choose Load tutorial again. You can also import your own terrain and release polygons.")
+            QMessageBox.information(self, "Tutorial files missing", "The tutorial is included in the Windows installer. Reinstall AVAC Desktop to restore missing files. For a source checkout, run python tools/fetch_tutorial.py, then choose Help > Load tutorial again.")
             return
         self._adopt(ProjectSession(name="Tutorial · Alpine avalanche", configuration=load_complete_configuration(default_template_path())))
         self.load_paths(root/"topo_cut_dam_1m.tif", root/"avalanches.geojson", tutorial=True)

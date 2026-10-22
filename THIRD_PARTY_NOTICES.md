@@ -57,7 +57,10 @@ the offline installer. The build-time source hashes are pinned in
 particular distribution. Source availability and notice completeness must be
 preserved when changing how binaries are distributed.
 
-The optional tutorial downloader obtains pinned terrain/release inputs from
-the separate [AVAC-QGIS repository](https://github.com/cgotelli/AVAC-QGIS).
-Those datasets are not included in this repository. Online map backgrounds
+The tutorial build helper obtains pinned terrain/release inputs from
+the separate [AVAC-QGIS repository](https://github.com/cgotelli/AVAC-QGIS)
+(revision `1d6eec1e36ceb95e3c9bab6fd59c58ea91408df2`). The Windows installer
+bundles `topo_cut_dam_1m.tif` and `avalanches.geojson` for offline tutorial use;
+SHA-256 identities are recorded in `tools/fetch_tutorial.py` and the installation
+inventory. Those datasets are not tracked in this source repository. Online map backgrounds
 carry their provider attribution in the application and are not bundled.

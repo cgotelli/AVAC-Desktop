@@ -30,7 +30,7 @@ need independent validation. Read [limitations](docs/LIMITATIONS.md) and the
 ## Windows installer
 
 Download the setup EXE and its SHA-256 checksum from
-[the latest preview release](https://github.com/cgotelli/AVAC-Desktop/releases/tag/v0.1.3-preview.1).
+[the latest preview release](https://github.com/cgotelli/AVAC-Desktop/releases/tag/v0.1.4-preview.1).
 The offline installer includes Python, GIS/UI libraries and both native solvers.
 It is unsigned; Windows may show an unknown-publisher notice.
 
@@ -66,8 +66,9 @@ compile and package the included native source. These archives and installers
 are build outputs, not tracked repository files. Setup binaries are distributed
 through GitHub Releases separately from the source tree.
 
-Optional tutorial data are downloaded separately, keeping the source checkout
-small:
+The Windows installer includes the terrain and release tutorial for offline use:
+choose **Help > Load tutorial**, then save a project in your own folder.
+For a source checkout, fetch the same pinned inputs separately:
 
 ```powershell
 python tools/fetch_tutorial.py
@@ -89,7 +90,7 @@ and verifies their SHA-256 hashes. You can also import your own data. See the
 | `native/src/WAVE/` | Impulse-wave solver and native run-control writer |
 | `native/clawpack-v5.14.0/` | Required Clawpack numerical/Python source subset and licenses |
 | `packaging/windows/` | Dependency environment, application assets and installer recipe |
-| `tools/` | Native runtime, application distribution and optional tutorial build helpers |
+| `tools/` | Native runtime, application distribution and tutorial build helpers |
 | `docs/` | Usage, architecture, project format and build documentation |
 
 Start with [architecture](docs/ARCHITECTURE.md) to understand the code and

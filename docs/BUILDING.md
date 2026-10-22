@@ -51,8 +51,10 @@ python -m pip install pyinstaller==6.22.3
 
 The output is `dist/AVACDesktop/AVACDesktop.exe` and its adjacent dependency
 folder. Keep the whole output directory together. The root launch `.cmd`
-opens that executable. The optional downloaded tutorial is not included in
-the frozen package by default; users can import their own data.
+opens that executable. The build scripts fetch and verify the pinned tutorial
+terrain and release inputs and include them in the application. For a direct
+PyInstaller invocation, first run `python tools/fetch_tutorial.py`; the spec
+rejects missing or changed tutorial files. End users need no tutorial download.
 
 ## Offline installer
 
@@ -65,7 +67,7 @@ must be on PATH, or pass its full path with `-MakeNSIS`:
 
 This stages dependency license texts, source archives, available conda build
 recipes/patches and a matching application source snapshot, freezes the app,
-and creates `dist/AVACDesktop-0.1.3-preview.1-Setup-x64.exe` plus its SHA-256
+and creates `dist/AVACDesktop-0.1.4-preview.1-Setup-x64.exe` plus its SHA-256
 file. Source downloads are pinned by
 `packaging/windows/distribution-sources.lock.json`; build caches/logs go under
 ignored `build/`. Internet access is needed for initial dependency/source
