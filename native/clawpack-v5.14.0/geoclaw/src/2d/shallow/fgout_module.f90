@@ -333,10 +333,10 @@ contains
         !write(59,*) '+++ ifg,jfg,eta,geometry at t = ',t
 
         ! Primary interpolation loops
-        do ifg=ifg_first,ifg_last
-            xfg=fgrid%x_low + (ifg-0.5d0)*fgrid%dx   ! cell centers
-            do jfg=jfg_first,jfg_last
-                yfg=fgrid%y_low + (jfg-0.5d0)*fgrid%dy   ! cell centers
+        do jfg=jfg_first,jfg_last
+            yfg=fgrid%y_low + (jfg-0.5d0)*fgrid%dy   ! cell centers
+            do ifg=ifg_first,ifg_last
+                xfg=fgrid%x_low + (ifg-0.5d0)*fgrid%dx   ! cell centers
 
                 ! Check to see if this coordinate is inside of this grid
                 if (.not.((xfg < xlowc.or.xfg > xhic) &

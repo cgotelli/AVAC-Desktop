@@ -32,3 +32,10 @@ Desktop uses the resulting versioned runtime archive rather than executing
 files directly from this directory. Updating `setrun.py` or a common Python
 reader therefore also requires rebuilding the runtime archive. Compilation
 products and runtime archives remain outside version control.
+
+Large-grid optimizations retain numerical settings and file compatibility:
+exact terrain-classification caching, zero-state CFL/flux shortcuts,
+contiguous traversal, lossless optional `AVACTOP1` terrain input and exact
+reuse of never-wet FGmax text. See [execution architecture](../docs/ARCHITECTURE.md)
+for cache invalidation, byte layout and memory bounds. Existing ASCII-only
+cases continue to work.

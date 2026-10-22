@@ -516,6 +516,9 @@ def release_coverage_from_rings(
     offsets_xy = np.column_stack((offset_x.ravel(), offset_y.ravel()))
     # Keep each point array below roughly one million rows (about 16 MB).
     chunk_cells = max(1, 1_000_000 // offsets_xy.shape[0])
+    polygon_bounds = [(exterior, holes, float(exterior[:, 0].min()), float(exterior[:, 0].max()),
+                       float(exterior[:, 1].min()), float(exterior[:, 1].max()))
+                      for exterior, holes in normalized]
 
     for start in range(0, row_indices.size, chunk_cells):
         stop = min(start + chunk_cells, row_indices.size)
@@ -524,18 +527,21 @@ def release_coverage_from_rings(
         centres = np.column_stack((x[columns], y[rows]))
         points = (centres[:, None, :] + offsets_xy[None, :, :]).reshape((-1, 2))
         inside_any = np.zeros(points.shape[0], dtype=bool)
-        for exterior, holes in normalized:
+        # Reject disjoint polygons once per chunk, before testing up to a
+        # million subcell points. Preserve the exact same sampling positions
+        # and polygon-union rule for polygons that can touch this chunk.
+        pxmin, pymin = centres.min(axis=0) + offsets[0]
+        pxmax, pymax = centres.max(axis=0) + offsets[-1]
+        for exterior, holes, xmin, xmax, ymin, ymax in polygon_bounds:
+            if xmax < pxmin or xmin > pxmax or ymax < pymin or ymin > pymax:
+                continue
             bbox = (
-                (points[:, 0] >= float(np.min(exterior[:, 0])))
-                & (points[:, 0] <= float(np.max(exterior[:, 0])))
-                & (points[:, 1] >= float(np.min(exterior[:, 1])))
-                & (points[:, 1] <= float(np.max(exterior[:, 1])))
+                (points[:, 0] >= xmin) & (points[:, 0] <= xmax)
+                & (points[:, 1] >= ymin) & (points[:, 1] <= ymax)
             )
             if not np.any(bbox):
                 continue
-            inside = np.zeros(points.shape[0], dtype=bool)
-            inside[bbox] = inside_polygon(points[bbox], exterior, holes)
-            inside_any |= inside
+            inside_any[bbox] |= inside_polygon(points[bbox], exterior, holes)
         fractions = inside_any.reshape((stop - start, -1)).mean(axis=1)
         coverage[rows, columns] = fractions
         report(0.50 + 0.50 * stop / row_indices.size)
@@ -802,7 +808,8 @@ def geoclaw_overlay_topography(raster: AvacRaster) -> AvacRaster:
     )
 
 
-def write_topography(path: Path, raster: AvacRaster, cancelled: Callable[[], bool] | None = None) -> None:
+def write_topography(path: Path, raster: AvacRaster, cancelled: Callable[[], bool] | None = None,
+                     *, native_cache: bool = False) -> None:
     """Write topotype-3 terrain without rounding away binary64 precision.
 
     Seventeen significant digits roundtrip each finite double exactly. This
@@ -824,6 +831,27 @@ def write_topography(path: Path, raster: AvacRaster, cancelled: Callable[[], boo
             if cancelled and cancelled():
                 raise PreparationCancelled("AVAC input preparation cancelled.")
             handle.write(" ".join(f"{float(value):.17g}" for value in row) + "\n")
+    if native_cache:
+        write_topography_cache(path.with_suffix('.avacbin'), raster, cancelled)
+
+
+def write_topography_cache(path: Path, raster: AvacRaster, cancelled=None) -> None:
+    """Lossless native copy of the ASCII nodal samples, in north-to-south order.
+
+    AVACTOP1: little-endian dimensions (int64), nodal origin/spacing/NoData
+    (five float64 values), then row-major float64 samples. ASCII stays available
+    for project readers and external tools; no resampling or quantization.
+    """
+    values, cell, xmin, xmax, ymin, ymax, nx, ny = _validated_topography_grid(raster)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    nodata = float(raster.metadata['nodata_value'])
+    with path.open('wb') as stream:
+        stream.write(struct.pack('<8sqq5d', b'AVACTOP1', nx, ny,
+                                 xmin+.5*cell, ymin+.5*cell, cell, cell, nodata))
+        for row in values[::-1]:
+            if cancelled and cancelled():
+                raise PreparationCancelled('AVAC input preparation cancelled.')
+            stream.write(np.asarray(np.where(np.isfinite(row), row, nodata), dtype='<f8').tobytes())
 
 
 def read_avac_topography(path: str | Path, crs_authid: str = "") -> AvacRaster:
@@ -1046,13 +1074,13 @@ def prepare_inputs(
         progress(50)
     # GeoClaw interpolates topotype-3 terrain as nodal samples.  Give that
     # reader edge support without changing the physical QGIS/qinit grid.
-    write_topography(topo_path, geoclaw_topography_halo(raster), cancelled)
+    write_topography(topo_path, geoclaw_topography_halo(raster), cancelled, native_cache=True)
     if fine_raster is not None:
         # A local fine DEM overlays the base terrain.  Unlike the base file,
         # it must not be edge-padded beyond its QGIS footprint because GeoClaw
         # would give that extrapolated fringe precedence over the base DEM.
         write_topography(
-            topo_dir / "fine_topography.asc", geoclaw_overlay_topography(fine_raster), cancelled,
+            topo_dir / "fine_topography.asc", geoclaw_overlay_topography(fine_raster), cancelled, native_cache=True,
         )
     if progress:
         progress(72)

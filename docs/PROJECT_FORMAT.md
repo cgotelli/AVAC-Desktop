@@ -145,3 +145,10 @@ It records run-local input targets, short execution-relative references, and
 SHA-256 identities of execution-copy `.data` files and their inputs. This avoids
 existing 150-character Fortran filename limits without changing original inputs
 or coefficients. Input-integrity checks run before launching prepared jobs.
+
+Prepared AVAC terrain files may have a `.avacbin` sibling containing the same
+nodal samples as the retained `.asc` file. This is a generated native-read
+cache inside the run folder, not a project input replacement. Execution
+integrity manifests additionally store optional `compatibility_inputs` hashes
+for the ASCII partners; older manifests without this field remain readable.
+Keep the whole run/project folder together as usual.

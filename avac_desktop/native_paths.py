@@ -28,7 +28,7 @@ def stage_execution_paths(output: Path, root: Path) -> None:
     output,root = output.resolve(),root.resolve()
     if not output.is_relative_to(root):
         raise ValueError("Native execution output is outside its isolated run.")
-    mappings,controls = [],[]
+    mappings,controls,compatibility_inputs = [],[],{}
     for control in sorted(output.glob("*.data")):
         raw = control.read_bytes()
         try:
@@ -52,6 +52,14 @@ def stage_execution_paths(output: Path, root: Path) -> None:
                 raise ValueError("Native input reference cannot be represented safely in the solver filename field.")
             mappings.append(dict(control=control.relative_to(root).as_posix(),original_path=str(target),
                                  execution_path=relative,input_path=target.relative_to(root).as_posix(),sha256=sha256_file(target)))
+            if control.name == 'topo.data' and target.suffix == '.avacbin':
+                original = target.with_suffix('.asc')
+                if original.is_file():
+                    original = original.resolve()
+                    if not original.is_relative_to(root):
+                        raise ValueError('Terrain compatibility input is outside its isolated run.')
+                    key = original.relative_to(root).as_posix()
+                    compatibility_inputs[key] = dict(path=key,sha256=sha256_file(original))
             return match.group(1)+match.group(2)+relative+match.group(2)
         changed = QUOTED.sub(replace,original)
         if ABSOLUTE_QUOTED.search(changed):
@@ -60,7 +68,8 @@ def stage_execution_paths(output: Path, root: Path) -> None:
             atomic_text(control,changed)
         controls.append(dict(path=control.relative_to(root).as_posix(),sha256=sha256_file(control)))
     atomic_text(root/MANIFEST,json.dumps(dict(format=1,output=output.relative_to(root).as_posix(),
-                                            references=mappings,controls=controls),indent=2)+"\n")
+                                            references=mappings,controls=controls,
+                                            compatibility_inputs=list(compatibility_inputs.values())),indent=2)+"\n")
 
 
 def verify_execution_paths(root: Path) -> None:
@@ -68,7 +77,8 @@ def verify_execution_paths(root: Path) -> None:
     payload = json.loads((root/MANIFEST).read_text(encoding="utf-8"))
     if payload.get("format") != 1:
         raise ValueError("Unsupported native input integrity manifest.")
-    for record in [*payload["controls"],*[dict(path=r["input_path"],sha256=r["sha256"]) for r in payload["references"]]]:
+    for record in [*payload["controls"],*payload.get('compatibility_inputs',[]),
+                   *[dict(path=r["input_path"],sha256=r["sha256"]) for r in payload["references"]]]:
         path = (root/record["path"]).resolve()
         if not path.is_relative_to(root) or not path.is_file() or sha256_file(path) != record["sha256"]:
             raise ValueError(f"Prepared native input changed or is missing: {path}. Prepare a new run.")

@@ -14,8 +14,8 @@ subroutine check4nans(meqn,mbc,mx,my,q,t,ichecknan)
     ! print *,'Checking for NANs at ichecknan = ',ichecknan
     ! print *,'  mx = ',mx,'  my = ',my,'  meqn = ',meqn
       
-    do i=1-mbc,mx+mbc
-        do j=1-mbc,my+mbc
+    do j=1-mbc,my+mbc
+        do i=1-mbc,mx+mbc
             do m=1,meqn
                 if (.not. (q(m,i,j) == q(m,i,j))) then
                     ! true if q(i,j,m) = NAN

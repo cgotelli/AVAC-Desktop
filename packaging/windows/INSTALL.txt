@@ -1,4 +1,4 @@
-AVAC Desktop 0.1.4 preview - Windows offline installer
+AVAC Desktop 0.1.5 preview - Windows offline installer
 
 REQUIREMENTS
 Windows 11 x64, Intel or AMD processor. Windows 10, ARM and 32-bit Windows
@@ -18,7 +18,7 @@ not an external Intel MKL/MPI installation. Core operation is offline.
 Internet access is only needed for optional online background maps.
 
 INSTALL
-Copy AVACDesktop-0.1.4-preview.1-Setup-x64.exe to the other computer and run it.
+Copy AVACDesktop-0.1.5-preview.1-Setup-x64.exe to the other computer and run it.
 Review the scientific-use notice and license, keep the default options and
 installation folder, then choose Install. Start AVAC Desktop from the Start
 menu or desktop shortcut. Install for each Windows user who needs the software.

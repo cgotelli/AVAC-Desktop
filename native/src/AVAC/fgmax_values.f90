@@ -41,8 +41,8 @@ subroutine fgmax_values(mx,my,meqn,mbc,maux,q,aux,dx,dy, &
     transition_depth = 4.d0 * velocity_depth
     transition_h4 = transition_depth**4
 
-    do i=i1,i2
-        do j=j1,j2
+    do j=j1,j2
+        do i=i1,i2
             values(1,i,j) = q(1,i,j)
             if (FG_NUM_VAL > 1) then
                 if (q(1,i,j) > velocity_depth) then

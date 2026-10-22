@@ -142,14 +142,16 @@ contains
         if (maux >= 2 .and. coordinate_system == 1) aux(2,:,:) = -1.d0
         
         if (qinit_type > 0) then
-            do i=1-mbc,mx+mbc
-                x = xlow_patch + (i-0.5d0)*dx
-                xim = x - 0.5d0*dx
-                xip = x + 0.5d0*dx
-                do j=1-mbc,my+mbc
-                    y = ylow_patch + (j-0.5d0)*dy
-                    yjm = y - 0.5d0*dy
-                    yjp = y + 0.5d0*dy
+            ! q and the source raster are contiguous along x. Cell averages
+            ! are independent; keep the same arithmetic and overlap order.
+            do j=1-mbc,my+mbc
+                y = ylow_patch + (j-0.5d0)*dy
+                yjm = y - 0.5d0*dy
+                yjp = y + 0.5d0*dy
+                do i=1-mbc,mx+mbc
+                    x = xlow_patch + (i-0.5d0)*dx
+                    xim = x - 0.5d0*dx
+                    xip = x + 0.5d0*dx
 
                     ! init.xyz values are raster-cell values located at cell
                     ! centres, not nodal samples.  Conservatively average the

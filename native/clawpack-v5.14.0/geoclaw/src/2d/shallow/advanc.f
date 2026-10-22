@@ -252,6 +252,7 @@ c
      &                             cfl_patch)
 c
       use amr_module
+      use geoclaw_module, only: conserve_depth_amr
 #ifdef WAVE_CFL_FAST_PATH
       use wave_cfl_buffer_module, only: get_wave_cfl_buffers
 #endif
@@ -278,6 +279,20 @@ c
       locnew = node(store1,mptr)
       locaux = node(storeaux,mptr)
       maxm = max(nx,ny)
+
+c     AVAC's b4step2 leaves an exactly empty state empty. Its normal
+c     Riemann solver returns zero waves regardless of terrain there.
+c     Include every conserved component and ghost cell: a wet neighbour,
+c     residual momentum, shallow film or NaN must take the ordinary path.
+c     This is only a noncommitting CFL probe; actual preparation, sources,
+c     observations and patch clocks still run for the accepted step.
+      if (conserve_depth_amr) then
+          if (all(alloc(locnew:locnew+nvar*mitot*mjtot-1)
+     &            .eq. 0.d0)) then
+              cfl_patch = 0.d0
+              return
+          endif
+      endif
 
 c     Keep the additional trial storage on the heap.  Large AVAC patches and
 c     several OpenMP workers otherwise exceed the small default Windows

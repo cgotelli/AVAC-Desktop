@@ -148,6 +148,14 @@ c
    20       continue
    30    continue
 
+c     An exactly empty normal slice has no normal or transverse waves.
+c     Check ghosts and every conserved component, not just dry depth, so
+c     neighbouring snow, shallow films and residual momentum still run.
+      if (all(q1d(:,1-mbc:mx+mbc) .eq. 0.d0)) then
+          cfl1d = 0.d0
+          return
+      endif
+
 c
 c
 c     # solve Riemann problem at each interface and compute Godunov updates
@@ -345,6 +353,7 @@ c     momentum components.  A wet ghost must still contribute its CFL.
 c     Match the normal x-sweeps in step2 and the reduction in flux2.
       do j = sweep_lo,my+sweep_pad
          q1d(:,1-mbc:mx+mbc) = qold(:,1-mbc:mx+mbc,j)
+         if (all(q1d(:,1-mbc:mx+mbc) .eq. 0.d0)) cycle
 
          if (mcapa .gt. 0) then
             dtdx1d(1-mbc:mx+mbc) =
@@ -369,6 +378,7 @@ c     Match the normal x-sweeps in step2 and the reduction in flux2.
 c     Match the normal y-sweeps in step2 and the reduction in flux2.
       do i = sweep_lo,mx+sweep_pad
          q1d(:,1-mbc:my+mbc) = qold(:,i,1-mbc:my+mbc)
+         if (all(q1d(:,1-mbc:my+mbc) .eq. 0.d0)) cycle
 
          if (mcapa .gt. 0) then
             dtdx1d(1-mbc:my+mbc) =

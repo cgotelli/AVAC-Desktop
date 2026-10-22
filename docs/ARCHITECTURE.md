@@ -78,6 +78,39 @@ into one graphics item, clips against the viewport and bounds cell-line work.
 The overlay is removed on entering Analyze. Results readers, frame workers
 and video export have no mesh path, mesh time index or mesh cache.
 
+## Large-grid execution
+
+Release coverage keeps the same 64-by-64 boundary samples and geometric union;
+chunk bounds reject disjoint polygons before allocating point-level masks.
+The sampled coverage and resulting initial depth remain unchanged.
+
+AVAC preparation retains `Topo/topography.asc` (and any fine overlay) for
+existing readers and external tools. It also writes a lossless `.avacbin`
+copy. The native writer selects that copy when present, falling back to ASCII
+for existing cases. `AVACTOP1` is an eight-byte magic followed by little-endian
+int64 columns/rows, five float64 values (nodal x/y origin, x/y spacing, NoData),
+then north-to-south row-major float64 samples. Its 64-byte header already has
+the half-cell registration used by the ASCII reader. Native reading validates
+magic, dimensions, size, coordinates and spacing before accepting samples.
+No terrain samples are resampled or rounded. Execution integrity records hash
+both the selected binary file and its retained ASCII partner.
+
+`rheology_module` caches terrain nonplanarity classifications in a thread-safe
+LRU, capped at 256 entries and 128 MiB. Reuse requires identical geometry,
+boundary settings, shape and every bed sample including ghost cells. Changed
+AMR stencils or moving terrain miss the cache and use the original classifier.
+The cache contains no solution-dependent values and does not commit trial
+CFL states. Exactly empty AVAC CFL probes and normal slices skip zero-wave
+work only when every conserved component and ghost cell is zero. Shallow
+films, residual momentum, NaNs and wet neighbouring ghosts retain the normal
+path. Wet/dry tolerances, numerical schemes and timestep acceptance are unchanged.
+
+Cell-independent loops follow contiguous x storage. Final FGmax output reuses
+an exact formatted suffix for never-wet points with zero maxima/times and an
+unset arrival time, preserving signed-zero handling and the original text
+layout. Other points retain the original formatting. Output frequency,
+resolution, diagnostic fields and native file compatibility are unchanged.
+
 ## Numerical source and distribution
 
 `native/src/AVAC` and `native/src/WAVE` contain the application's Fortran solvers

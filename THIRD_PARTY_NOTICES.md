@@ -19,6 +19,10 @@ the upstream test suite is excluded from this source subset.
 Desktop also modifies `geoclaw/src/2d/shallow/flag2refine2.f90` to refine wet
 AVAC release cells at initialization, and `amr2.f90` to provide an optional
 initialization-only patch geometry export before output or time stepping.
+Further Desktop changes improve contiguous traversal in `check4nans.f90`
+and `fgout_module.f90`, skip exactly empty AVAC CFL probes in `advanc.f`,
+read lossless terrain caches in `topo_module.f90`, and reuse unchanged
+never-wet diagnostic text in `fgmax_finalize.f90`.
 See [native source notes](native/README.md).
 
 ## Windows native runtime libraries

@@ -486,6 +486,60 @@ contains
     !  Read topo file.
     ! ========================================================================
 
+    logical function is_avac_topography(fname,topo_type)
+        use utility_module, only: to_lower
+        character(len=*), intent(in) :: fname
+        integer, intent(in) :: topo_type
+        integer :: n
+        n = len_trim(fname)
+        is_avac_topography = .false.
+        if (abs(topo_type) /= 3 .or. n < 8) return
+        is_avac_topography = to_lower(fname(n-7:n)) == '.avacbin'
+    end function is_avac_topography
+
+    subroutine read_avac_topography(fname,mx,my,xll,yll,dx,dy,values)
+        use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+        character(len=*), intent(in) :: fname
+        integer, intent(out) :: mx,my
+        real(kind=8), intent(out) :: xll,yll,dx,dy
+        real(kind=8), optional, intent(out) :: values(:)
+        character(len=8) :: magic
+        integer :: unit,ios
+        integer(kind=8) :: nx,ny,cells,file_bytes
+        real(kind=8) :: nodata
+        ! Same nodal registration and row order as topotype-3 ASCII. Only
+        ! decimal parsing is bypassed; samples retain full float64 precision.
+        open(newunit=unit,file=fname,status='old',action='read',access='stream', &
+             form='unformatted',convert='little_endian',iostat=ios)
+        if (ios /= 0) error stop 'Cannot open AVAC terrain cache'
+        read(unit,iostat=ios) magic,nx,ny,xll,yll,dx,dy,nodata
+        if (ios /= 0) error stop 'Incomplete AVAC terrain header'
+        if (magic /= 'AVACTOP1') error stop 'Invalid AVAC terrain format'
+        if (nx < 1 .or. ny < 1 .or. nx > huge(mx) .or. ny > huge(my)) &
+            error stop 'Invalid AVAC terrain dimensions'
+        cells = nx*ny
+        if (cells > 1000000000_8) error stop 'AVAC terrain cache exceeds size limit'
+        inquire(unit=unit,size=file_bytes)
+        if (file_bytes /= 64_8+8_8*cells) error stop 'AVAC terrain cache size mismatch'
+        if (.not. all(ieee_is_finite([xll,yll,dx,dy]))) &
+            error stop 'Invalid AVAC terrain coordinates'
+        if (dx <= 0.d0 .or. dy <= 0.d0) error stop 'Invalid AVAC terrain spacing'
+        if (.not. all(ieee_is_finite([xll+(nx-1)*dx,yll+(ny-1)*dy]))) &
+            error stop 'Invalid AVAC terrain extent'
+        mx = int(nx)
+        my = int(ny)
+        if (present(values)) then
+            if (size(values,kind=8) /= cells) error stop 'AVAC terrain shape mismatch'
+            read(unit,iostat=ios) values
+            if (ios /= 0) error stop 'Incomplete AVAC terrain samples'
+            if (any(values == nodata)) then
+                if (topo_missing == 99999.d0) error stop 'Missing AVAC terrain samples'
+                where (values == nodata) values = topo_missing
+            endif
+        endif
+        close(unit)
+    end subroutine read_avac_topography
+
     subroutine read_topo_file(mx,my,topo_type,fname,xll,yll,topo)
 
 #ifdef NETCDF
@@ -506,7 +560,8 @@ contains
         ! Locals
         integer, parameter :: iunit = 19, miss_unit = 17
         logical, parameter :: maketype2 = .false.
-        integer :: missing,status,n
+        integer :: missing,status,n,binary_mx,binary_my
+        real(kind=8) :: binary_x,binary_y,binary_dx,binary_dy
         real(kind=8) :: no_data_value,x,y,topo_temp
         real(kind=8) :: values(16)
         character(len=80) :: str
@@ -523,6 +578,14 @@ contains
             var_type, num_vars, num_dims_tot, z_dim_ids(2)
 
         mtot = int(mx, 8) * int(my, 8)
+
+        if (is_avac_topography(fname,topo_type)) then
+            call read_avac_topography(fname,binary_mx,binary_my,binary_x,binary_y,binary_dx,binary_dy,topo)
+            if (binary_mx /= mx .or. binary_my /= my .or. binary_x /= xll .or. binary_y /= yll) &
+                error stop 'AVAC terrain header changed after allocation'
+            if (topo_type < 0) topo = -topo
+            return
+        endif
 
         print *, ' '
         print *, 'Reading topography file  ', fname
@@ -829,6 +892,13 @@ contains
             print *, 'Missing topography file:'
             print *, '   ', fname
             stop
+        endif
+
+        if (is_avac_topography(fname,topo_type)) then
+            call read_avac_topography(fname,mx,my,xll,yll,dx,dy)
+            xhi = xll+(mx-1)*dx
+            yhi = yll+(my-1)*dy
+            return
         endif
 
         select case(abs(topo_type))

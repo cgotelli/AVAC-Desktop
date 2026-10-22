@@ -38,11 +38,11 @@ try {
     Invoke-LoggedCommand -Log (Join-Path $logs "source-snapshot.txt") -Executable $Python -CommandArgs @("tools/desktop_distribution.py", "source")
     Invoke-LoggedCommand -Log (Join-Path $logs "payload.txt") -Executable $Python -CommandArgs @("tools/desktop_distribution.py", "installer-files")
     $sizeKiB = (Get-Content -LiteralPath (Join-Path $stage "size-kib.txt") -Raw).Trim()
-    $outputFile = Join-Path $root "dist\AVACDesktop-0.1.4-preview.1-Setup-x64.exe"
-    Invoke-LoggedCommand -Log (Join-Path $logs "installer-build.txt") -Executable $compiler -CommandArgs @("/WX", "/V3", "/DAVAC_VERSION=0.1.4-preview.1", "/DBUNDLE=$root\dist\AVACDesktop", "/DSTAGE=$stage", "/DOUTPUT_FILE=$outputFile", "/DUNINSTALL_FILES=$stage\uninstall-files.nsh", "/DINSTALLED_KIB=$sizeKiB", (Join-Path $PSScriptRoot "installer.nsi"))
+    $outputFile = Join-Path $root "dist\AVACDesktop-0.1.5-preview.1-Setup-x64.exe"
+    Invoke-LoggedCommand -Log (Join-Path $logs "installer-build.txt") -Executable $compiler -CommandArgs @("/WX", "/V3", "/DAVAC_VERSION=0.1.5-preview.1", "/DBUNDLE=$root\dist\AVACDesktop", "/DSTAGE=$stage", "/DOUTPUT_FILE=$outputFile", "/DUNINSTALL_FILES=$stage\uninstall-files.nsh", "/DINSTALLED_KIB=$sizeKiB", (Join-Path $PSScriptRoot "installer.nsi"))
     $hash = (Get-FileHash -LiteralPath $outputFile -Algorithm SHA256).Hash.ToLowerInvariant()
     Set-Content -LiteralPath ($outputFile+".sha256") -Encoding ASCII -Value ($hash+"  "+[IO.Path]::GetFileName($outputFile))
-    [ordered]@{version="0.1.4-preview.1"; installer=$outputFile; sha256=$hash; bytes=(Get-Item -LiteralPath $outputFile).Length; signed=$false; scope="Per-user offline Windows 11 x64 preview; clean-VM acceptance remains separate"} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $logs "installer.json") -Encoding UTF8
+    [ordered]@{version="0.1.5-preview.1"; installer=$outputFile; sha256=$hash; bytes=(Get-Item -LiteralPath $outputFile).Length; signed=$false; scope="Per-user offline Windows 11 x64 preview; clean-VM acceptance remains separate"} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $logs "installer.json") -Encoding UTF8
     Write-Output "Installer: $outputFile"
     Write-Output "SHA-256: $hash"
 } finally { Pop-Location }

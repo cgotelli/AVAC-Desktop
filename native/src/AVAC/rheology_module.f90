@@ -73,7 +73,123 @@ module rheology_module
     real(kind=8), save, allocatable :: xi_zones_rh(:)  ! (n_zones) Voellmy xi values (m/s²)
     real(kind=8), save, allocatable :: C_zones_rh(:)   ! (n_zones) cohesion values (Pa)
 
+    ! Terrain classification depends on the bed/stencil, not the evolving
+    ! snow. Reuse exact classifications across CFL probes and accepted steps.
+    ! Compare every bed value, including ghosts, before reuse: AMR changes,
+    ! moving terrain and different boundary stencils invalidate naturally.
+    integer, parameter, private :: terrain_cache_entries = 256
+    integer(kind=8), parameter, private :: terrain_cache_limit = 128_8*1024_8*1024_8
+    type, private :: terrain_cache_entry
+        real(kind=8), allocatable :: bed(:,:), mask(:,:)
+        real(kind=8) :: geometry(8)
+        integer :: shape(3)
+        logical :: periodic(2)
+        integer(kind=8) :: touched = 0, bytes = 0
+    end type
+    type(terrain_cache_entry), save, private :: terrain_cache(terrain_cache_entries)
+    integer(kind=8), save, private :: terrain_cache_bytes = 0, terrain_cache_clock = 0
+    private :: release_terrain_cache_entry
+
 contains
+
+    subroutine cached_terrain_nonplanarity_mask(mbc,mx,my,bed,xlower,ylower,dx,dy, &
+                                              xmin,xmax,ymin,ymax,xperiodic,yperiodic,mask)
+        integer, intent(in) :: mbc,mx,my
+        real(kind=8), intent(in) :: bed(1-mbc:,1-mbc:)
+        real(kind=8), intent(in) :: xlower,ylower,dx,dy,xmin,xmax,ymin,ymax
+        logical, intent(in) :: xperiodic,yperiodic
+        real(kind=8), intent(out) :: mask(1-mbc:,1-mbc:)
+        real(kind=8) :: geometry(8)
+        integer :: shape(3),i,slot,oldest
+        integer(kind=8) :: bytes,age
+        logical :: periodic(2),hit
+        geometry = [xlower,ylower,dx,dy,xmin,xmax,ymin,ymax]
+        shape = [mbc,mx,my]
+        periodic = [xperiodic,yperiodic]
+        bytes = 16_8*int(mx+2*mbc,8)*int(my+2*mbc,8)
+        hit = .false.
+        !$omp critical(AVACTerrainCache)
+        do i=1,terrain_cache_entries
+            if (.not. allocated(terrain_cache(i)%bed)) cycle
+            if (any(terrain_cache(i)%shape /= shape)) cycle
+            if (any(terrain_cache(i)%geometry /= geometry)) cycle
+            if (any(terrain_cache(i)%periodic .neqv. periodic)) cycle
+            if (all(terrain_cache(i)%bed == bed)) then
+                mask = terrain_cache(i)%mask
+                terrain_cache_clock = terrain_cache_clock+1
+                terrain_cache(i)%touched = terrain_cache_clock
+                hit = .true.
+            endif
+            exit
+        enddo
+        !$omp end critical(AVACTerrainCache)
+        if (hit) return
+
+        call terrain_nonplanarity_mask(mbc,mx,my,bed,xlower,ylower,dx,dy, &
+                                       xmin,xmax,ymin,ymax,xperiodic,yperiodic,mask)
+        if (bytes > terrain_cache_limit) return
+
+        !$omp critical(AVACTerrainCache)
+        ! Another worker may have populated the same geometry meanwhile.
+        slot = 0
+        do i=1,terrain_cache_entries
+            if (.not. allocated(terrain_cache(i)%bed)) cycle
+            if (any(terrain_cache(i)%shape /= shape)) cycle
+            if (any(terrain_cache(i)%geometry /= geometry)) cycle
+            if (any(terrain_cache(i)%periodic .neqv. periodic)) cycle
+            slot = i
+            exit
+        enddo
+        if (slot == 0) then
+            age = huge(age)
+            do i=1,terrain_cache_entries
+                if (.not. allocated(terrain_cache(i)%bed)) then
+                    slot = i
+                    exit
+                endif
+                if (terrain_cache(i)%touched < age) then
+                    slot = i
+                    age = terrain_cache(i)%touched
+                endif
+            enddo
+        endif
+        call release_terrain_cache_entry(slot)
+        do while (terrain_cache_bytes+bytes > terrain_cache_limit)
+            oldest = 0
+            age = huge(age)
+            do i=1,terrain_cache_entries
+                if (.not. allocated(terrain_cache(i)%bed)) cycle
+                if (terrain_cache(i)%touched < age) then
+                    oldest = i
+                    age = terrain_cache(i)%touched
+                endif
+            enddo
+            if (oldest == 0) exit
+            call release_terrain_cache_entry(oldest)
+        enddo
+        allocate(terrain_cache(slot)%bed(1-mbc:mx+mbc,1-mbc:my+mbc))
+        allocate(terrain_cache(slot)%mask(1-mbc:mx+mbc,1-mbc:my+mbc))
+        terrain_cache(slot)%bed = bed
+        terrain_cache(slot)%mask = mask
+        terrain_cache(slot)%geometry = geometry
+        terrain_cache(slot)%shape = shape
+        terrain_cache(slot)%periodic = periodic
+        terrain_cache_clock = terrain_cache_clock+1
+        terrain_cache(slot)%touched = terrain_cache_clock
+        terrain_cache(slot)%bytes = bytes
+        terrain_cache_bytes = terrain_cache_bytes+bytes
+        !$omp end critical(AVACTerrainCache)
+    end subroutine cached_terrain_nonplanarity_mask
+
+    ! Caller owns AVACTerrainCache while allocating, releasing or copying.
+    subroutine release_terrain_cache_entry(slot)
+        integer, intent(in) :: slot
+        if (allocated(terrain_cache(slot)%bed)) then
+            deallocate(terrain_cache(slot)%bed,terrain_cache(slot)%mask)
+            terrain_cache_bytes = terrain_cache_bytes-terrain_cache(slot)%bytes
+            terrain_cache(slot)%bytes = 0
+        endif
+    end subroutine release_terrain_cache_entry
 
     ! Stabilize correction FLUXES, never cell averages. This bounded depth
     ! factor reduces high order at unresolved curved wet fronts. The state

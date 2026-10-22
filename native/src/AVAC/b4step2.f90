@@ -39,7 +39,7 @@ subroutine b4step2(mbc, mx, my, meqn, q, xlower, ylower, dx, dy, t, dt, &
     ! Store current grid spacings for the D-Claw static yield check in rpn2
     use rheology_module, only: dx_avac, dy_avac, dt_avac, rho_rh, imodel_rh
     use rheology_module, only: get_mu_xi, static_yield_ratio_2d
-    use rheology_module, only: terrain_nonplanarity_mask
+    use rheology_module, only: cached_terrain_nonplanarity_mask
     use rheology_module, only: state_momentum_regularization_depth_rh, &
                               voellmy_state_momentum_regularization_depth_rh
 
@@ -72,16 +72,14 @@ subroutine b4step2(mbc, mx, my, meqn, q, xlower, ylower, dx, dy, t, dt, &
     ! at same-level patch interfaces, where roundoff can leave h equal to the
     ! threshold after a wet/dry Riemann update and spuriously restart an
     ! otherwise arrested Coulomb deposit.
-    forall(i=1-mbc:mx+mbc, j=1-mbc:my+mbc, q(1,i,j) <= dry_tolerance)
-        q(1,i,j) = max(q(1,i,j), 0.d0)
-        q(2:3,i,j) = 0.d0
-    end forall
-
-    ! Check for fluid speed sqrt(u**2 + v**2) > speed_limit
-    ! and reset by scaling (u,v) down to this value (preserving direction)
+    ! Clean dry cells and limit wet-cell speeds in one contiguous pass.
+    ! The dry branch already has zero speed after clearing its momentum.
     do j = 1-mbc, my+mbc
         do i = 1-mbc, mx+mbc
-            if (q(1,i,j) > 0.d0) then
+            if (q(1,i,j) <= dry_tolerance) then
+                q(1,i,j) = max(q(1,i,j), 0.d0)
+                q(2:3,i,j) = 0.d0
+            else if (q(1,i,j) > 0.d0) then
                 s = sqrt((q(2,i,j)**2 + q(3,i,j)**2)) / q(1,i,j)
                 if (s > speed_limit) then
                     sratio = speed_limit / s
@@ -110,7 +108,7 @@ subroutine b4step2(mbc, mx, my, meqn, q, xlower, ylower, dx, dy, t, dt, &
             error stop 'AVAC shallow correction-flux limiting requires num_aux=3 for granular runs'
         end if
         if (maux >= 3) then
-            call terrain_nonplanarity_mask(mbc,mx,my,aux(1,:,:),xlower,ylower,dx,dy, &
+            call cached_terrain_nonplanarity_mask(mbc,mx,my,aux(1,:,:),xlower,ylower,dx,dy, &
                                             xlowdomain,xhidomain,ylowdomain,yhidomain, &
                                             xperdom,yperdom,aux(3,:,:))
         end if

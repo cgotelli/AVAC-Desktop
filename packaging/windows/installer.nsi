@@ -8,10 +8,10 @@ Name "AVAC Desktop ${AVAC_VERSION}"
 OutFile "${OUTPUT_FILE}"
 InstallDir ""
 BrandingText "AVAC Desktop - free scientific software"
-VIProductVersion "0.1.4.1"
+VIProductVersion "0.1.5.1"
 VIAddVersionKey /LANG=1033 "ProductName" "AVAC Desktop"
 VIAddVersionKey /LANG=1033 "FileDescription" "AVAC Desktop preview offline installer"
-VIAddVersionKey /LANG=1033 "FileVersion" "0.1.4.1"
+VIAddVersionKey /LANG=1033 "FileVersion" "0.1.5.1"
 VIAddVersionKey /LANG=1033 "LegalCopyright" "AVAC Desktop contributors; third-party notices included"
 
 !include MUI2.nsh

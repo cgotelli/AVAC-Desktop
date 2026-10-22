@@ -8,6 +8,7 @@ subroutine fgmax_finalize()
     !   aux(1,:,:) value (topography) on proper level included with values,
     !       instead of separate file giving aux values on all levels.
 
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_negative
     use fgmax_module
     use amr_module, only: mxnest
 
@@ -18,6 +19,7 @@ subroutine fgmax_finalize()
     integer :: k,ifg,level,mv,ma,ipos,idigit,ifg1
     type(fgrid), pointer :: fg
     real(kind=8) :: topo
+    character(len=:), allocatable :: dry_suffix
 
     if (FG_NUM_AUX .ne. 1) then
         write(6,*) '*** Unexpected FG_NUM_AUX = ',FG_NUM_AUX
@@ -41,6 +43,11 @@ subroutine fgmax_finalize()
         print *, 'Writing to file ', fname
         open(unit=FG_UNIT,file=trim(fname),status='unknown',form='formatted')
 
+        ! Never-wet points share these exact diagnostic fields. Format them
+        ! once rather than repeatedly converting the same zeros/sentinel.
+        ! Coordinates, level and terrain still use the original descriptors.
+        allocate(character(len=17*(2*FG_NUM_VAL+1)) :: dry_suffix)
+        write(dry_suffix,'(21e17.8)') (0.d0,mv=1,2*FG_NUM_VAL),FG_NOTSET
         do k=1,fg%npts
             do mv=1,FG_NUM_VAL
                 if (abs(fg%valuemax(mv,k)) .lt. 1.d-90) then
@@ -53,6 +60,11 @@ subroutine fgmax_finalize()
             else
                 topo = FG_NOTSET
             endif
+            if (all(fg%valuemax(:,k) == 0.d0) .and. all(fg%tmax(:,k) == 0.d0) .and. &
+                .not. any(ieee_is_negative(fg%tmax(:,k))) .and. fg%arrival_time(k) == FG_NOTSET) then
+                write(FG_UNIT,'(2e20.11,i4,e17.8,a)') fg%x(k),fg%y(k),fg%levelmax(k),topo,dry_suffix
+                cycle
+            endif
             write(FG_UNIT,111) fg%x(k),fg%y(k), fg%levelmax(k), &
                   topo, &
                   (fg%valuemax(mv,k), mv=1,FG_NUM_VAL), &
@@ -60,6 +72,7 @@ subroutine fgmax_finalize()
  111        format(2e20.11,i4,21e17.8)
             enddo
 
+        deallocate(dry_suffix)
         close(FG_UNIT)
 
 

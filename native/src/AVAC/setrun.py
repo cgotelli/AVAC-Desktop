@@ -770,9 +770,16 @@ def setgeo(rundata):
     topo_data = rundata.topo_data
     topo_file = str(topo_dir / Files['topofile']) # for topography, append lines of the form
     topo_type = Files['type_dem'] 
+    # Desktop preparation writes a lossless binary copy of these same nodal
+    # samples. Keep the ASCII path/format as the fallback for existing cases.
+    if abs(topo_type) == 3 and Path(topo_file).with_suffix('.avacbin').is_file():
+        topo_file = str(Path(topo_file).with_suffix('.avacbin'))
     topo_data.topofiles.append([topo_type, 1, 3, 0., 1.e10, topo_file]) #    [topotype, minlevel, maxlevel, t1, t2, fname]
     if Refine['topo_refinement']:
-        topo_data.topofiles.append([topo_type, 1, 3, 0., 1.e10, str(topo_dir / Refine['finer_dem'])])
+        fine_file = topo_dir / Refine['finer_dem']
+        if abs(topo_type) == 3 and fine_file.with_suffix('.avacbin').is_file():
+            fine_file = fine_file.with_suffix('.avacbin')
+        topo_data.topofiles.append([topo_type, 1, 3, 0., 1.e10, str(fine_file)])
 
     # == setdtopo.data values ==
     dtopo_data = rundata.dtopo_data
