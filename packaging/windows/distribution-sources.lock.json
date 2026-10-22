@@ -1,0 +1,121 @@
+[
+  {
+    "url": "https://www.gaia-gis.it/gaia-sins/freexl-2.0.0.tar.gz",
+    "filename": "freexl-2.0.0.tar.gz",
+    "sha256": "176705f1de58ab7c1eebbf5c6de46ab76fcd8b856508dbd28f5648f7c6e1a7f0",
+    "bytes": 991565,
+    "component": "freexl"
+  },
+  {
+    "url": "https://download.osgeo.org/geos/geos-3.14.1.tar.bz2",
+    "filename": "geos-3.14.1.tar.bz2",
+    "sha256": "3c20919cda9a505db07b5216baa980bacdaa0702da715b43f176fb07eff7e716",
+    "bytes": 7013834,
+    "component": "geos"
+  },
+  {
+    "url": "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.18.tar.gz",
+    "filename": "libiconv-1.18.tar.gz",
+    "sha256": "3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8",
+    "bytes": 5822590,
+    "component": "libiconv"
+  },
+  {
+    "url": "https://www.gaia-gis.it/gaia-sins/librttopo-1.1.0.tar.gz",
+    "filename": "librttopo-1.1.0.tar.gz",
+    "sha256": "5b4002b2b6be1fe59a487cff6edbc81db773dd1e437beb966fac6ac68e849f19",
+    "bytes": 689760,
+    "component": "librttopo"
+  },
+  {
+    "url": "https://www.gaia-gis.it/gaia-sins/libspatialite-sources/libspatialite-5.1.0.tar.gz",
+    "filename": "libspatialite-5.1.0.tar.gz",
+    "sha256": "43be2dd349daffe016dd1400c5d11285828c22fea35ca5109f21f3ed50605080",
+    "bytes": 6517377,
+    "component": "libspatialite"
+  },
+  {
+    "url": "https://www.oberhumer.com/opensource/lzo/download/lzo-2.10.tar.gz",
+    "filename": "lzo-2.10.tar.gz",
+    "sha256": "c0f892943208266f9b6543b3ae308fab6284c5c90e627931446fb49b4221a072",
+    "bytes": 600622,
+    "component": "lzo"
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/63/41/f90302845945abd4ed647933ff5ee7c6ac93983187be67f897b6cb613331/pyinstaller-6.22.3.tar.gz",
+    "filename": "pyinstaller-6.22.3.tar.gz",
+    "sha256": "05eb2f5615503e72939a7224d68b4aff572c6b0438ee4a17d0a4b481f399362d",
+    "bytes": 4437180,
+    "component": "pyinstaller"
+  },
+  {
+    "url": "https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qtbase-everywhere-src-6.8.3.tar.xz",
+    "filename": "qtbase-everywhere-src-6.8.3.tar.xz",
+    "sha256": "56001b905601bb9023d399f3ba780d7fa940f3e4861e496a7c490331f49e0b80",
+    "bytes": 48426536,
+    "component": "qtbase"
+  },
+  {
+    "url": "https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qtsvg-everywhere-src-6.8.3.tar.xz",
+    "filename": "qtsvg-everywhere-src-6.8.3.tar.xz",
+    "sha256": "35eb516460f00f264eb504baa253432384351cf23fb9980a5857190e8deef438",
+    "bytes": 2009072,
+    "component": "qtsvg"
+  },
+  {
+    "url": "https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qtmultimedia-everywhere-src-6.8.3.tar.xz",
+    "filename": "qtmultimedia-everywhere-src-6.8.3.tar.xz",
+    "sha256": "32e82307d783172a3b984cc3c47c5e4e8b819cee3cbfc702c7012c47f15f6b01",
+    "bytes": 9705340,
+    "component": "qtmultimedia"
+  },
+  {
+    "url": "https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qtimageformats-everywhere-src-6.8.3.tar.xz",
+    "filename": "qtimageformats-everywhere-src-6.8.3.tar.xz",
+    "sha256": "049bfb99845e4801672aca07c3c4fc4c140f932a3a33faa899419579e33ef1c8",
+    "bytes": 2035140,
+    "component": "qtimageformats"
+  },
+  {
+    "url": "https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qttranslations-everywhere-src-6.8.3.tar.xz",
+    "filename": "qttranslations-everywhere-src-6.8.3.tar.xz",
+    "sha256": "c3c61d79c3d8fe316a20b3617c64673ce5b5519b2e45535f49bee313152fa531",
+    "bytes": 1577680,
+    "component": "qttranslations"
+  },
+  {
+    "url": "https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qttools-everywhere-src-6.8.3.tar.xz",
+    "filename": "qttools-everywhere-src-6.8.3.tar.xz",
+    "sha256": "02a4e219248b94f1333df843d25763f35251c1074cdc4fb5bda67d340f8c8b3a",
+    "bytes": 10301984,
+    "component": "qttools"
+  },
+  {
+    "url": "https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.8.3-src/pyside-setup-everywhere-src-6.8.3.tar.xz",
+    "filename": "pyside-setup-everywhere-src-6.8.3.tar.xz",
+    "sha256": "d2c896f7f1a6a7ea4c9f98cfe317272fd139703ddf612b86999f09e48aeef0e6",
+    "bytes": 16611768,
+    "component": "pyside-setup"
+  },
+  {
+    "url": "https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz",
+    "filename": "ffmpeg-7.1.tar.xz",
+    "sha256": "40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6",
+    "bytes": 11011364,
+    "component": "ffmpeg"
+  },
+  {
+    "url": "https://gcc.gnu.org/pub/gcc/releases/gcc-13.2.0/gcc-13.2.0.tar.xz",
+    "filename": "gcc-13.2.0.tar.xz",
+    "sha256": "e275e76442a6067341a27f04c5c6b83d8613144004c0413528863dc6b5c743da",
+    "bytes": 87858592,
+    "component": "gcc-runtime"
+  },
+  {
+    "url": "https://codeload.github.com/mingw-w64/mingw-w64/tar.gz/refs/tags/v11.0.1",
+    "filename": "mingw-w64-v11.0.1.tar.gz",
+    "sha256": "9c82a58713786c95b0594443a1c6190cd986401ed2b03677a90acc470140af28",
+    "bytes": 13916903,
+    "component": "mingw-w64"
+  }
+]

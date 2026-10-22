@@ -1,0 +1,10 @@
+* text=auto eol=lf
+*.py text eol=lf
+*.f text eol=lf
+*.f90 text eol=lf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.png binary
+*.ico binary
+# These upstream notices/source files have byte-pinned hashes in manifest.json.
+tools/windows_runtime_licenses/* -text

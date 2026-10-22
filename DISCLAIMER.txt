@@ -1,0 +1,49 @@
+AVAC Desktop - scientific use, warranty and liability notice
+
+AVAC Desktop is free software under the GNU Affero General Public License,
+version 3 or, at your option, any later version (AGPL-3.0-or-later).
+The complete license is supplied as LICENSE. Third-party components retain
+their own licenses and notices. You may study, modify and redistribute the
+software in accordance with those licenses. This notice adds no restriction
+to the rights granted by them.
+
+NO WARRANTY
+To the extent permitted by applicable law, the software, models, documentation
+and example data are provided AS IS, without any express or implied warranty,
+including warranties of accuracy, completeness, reliability, availability,
+merchantability, fitness for a particular purpose or non-infringement.
+No promise is made that the software is error-free, that a calculation will
+complete, or that a result represents a real avalanche or wave correctly.
+
+SCIENTIFIC AND SAFETY LIMITATIONS
+This is a development version of a numerical modelling tool. It is not a
+certified hazard assessment, warning system, engineering design or emergency
+decision service. Numerical results depend on input quality, coordinate
+systems, terrain and release geometry, physical assumptions, parameter choices,
+grid resolution, boundary conditions, numerical approximations and software
+and hardware behaviour. Results can contain errors or significant uncertainty.
+Examples and visualisations are not predictions or safety assurances.
+
+Users are responsible for selecting appropriate models and data, checking units
+and coordinate systems, calibrating and validating the model, assessing
+sensitivity and uncertainty, verifying outputs independently, retaining backups
+and obtaining qualified professional review appropriate to the intended use.
+Do not rely on this software as the sole basis for decisions about life safety,
+evacuation, land use, infrastructure, insurance, regulatory approval or other
+consequential decisions. This paragraph explains scientific limitations; it
+does not add a field-of-use restriction to the software license.
+
+LIMITATION OF LIABILITY
+To the extent permitted by applicable law, and unless agreed otherwise in
+writing, the authors, copyright holders, contributors and distributors shall
+not be liable for losses or damages arising from use of, inability to use, or
+reliance on the software or its outputs. This includes inaccurate results,
+loss or corruption of data, interruption of work, lost profits, property damage,
+personal injury and indirect, incidental, special or consequential damages,
+even if the possibility of such damages has been advised. See AGPL sections
+15, 16 and 17 for the governing warranty and liability provisions.
+
+Nothing in this notice excludes or limits liability or statutory rights that
+cannot lawfully be excluded or limited. It does not constitute legal advice
+or a guarantee of protection from claims. The AGPL and the applicable law
+govern if this summary conflicts with them.

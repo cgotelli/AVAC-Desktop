@@ -1,0 +1,69 @@
+AVAC Desktop 0.1.0 preview - Windows offline installer
+
+REQUIREMENTS
+Windows 11 x64, Intel or AMD processor. Windows 10, ARM and 32-bit Windows
+are not supported by this first installer. Standard Windows multimedia
+components are required for video export; Windows N needs Microsoft's Media
+Feature Pack through Windows Optional Features. Setup checks for that component.
+4 GB RAM minimum for small examples; 8 GB or more recommended. Large terrain
+models can need substantially more memory. Allow at least 4 GB free space for
+the installer, application, bundled source and first-run solver extraction,
+plus separate space for project inputs and simulation output.
+
+No Python, QGIS, GDAL, compiler, Visual Studio, Microsoft MPI, separate Qt
+installation, paid license or administrator account is required. The required
+Python interpreter, GDAL/PROJ, OpenBLAS, Qt, C/C++/Fortran runtime libraries and
+both AVAC/WAVE solvers are included. The numerical libraries use OpenBLAS,
+not an external Intel MKL/MPI installation. Core operation is offline.
+Internet access is only needed for optional online background maps.
+
+INSTALL
+Copy AVACDesktop-0.1.0-preview.1-Setup-x64.exe to the other computer and run it.
+Review the scientific-use notice and license, keep the default options and
+installation folder, then choose Install. Start AVAC Desktop from the Start
+menu or desktop shortcut. Install for each Windows user who needs the software.
+The default folder is %LOCALAPPDATA%\Programs\AVAC Desktop.
+
+This first test installer is unsigned. Windows may identify its publisher as
+unknown. Obtain it from the project owner and verify its SHA-256 against the
+supplied checksum before deciding to proceed. No security setting needs to be
+disabled. Public signing/Store delivery remains a separate release step.
+
+START A CASE
+Save each project in a dedicated writable folder in Documents or another data
+location, rather than in the application folder. Save brings required inputs
+under that folder; completed runs register automatically. Move the whole case
+folder to transfer it and open its .avacproj. Solvers extract their bundled
+runtime into %APPDATA%\AVAC Desktop\runtime\desktop on first use; no download is made.
+First preparation can take longer while extraction and integrity checks finish.
+
+UPDATE AND UNINSTALL
+Close AVAC Desktop before installing another build or uninstalling it. Run
+Setup again to replace an existing installation. Saved projects and preferences
+are retained. Use Windows Settings > Apps > Installed apps > AVAC Desktop >
+Uninstall. The uninstaller removes only its recorded program files and empty
+directories; it preserves other files, saved projects, user preferences and
+the reusable solver cache. Do not manually delete a project folder to uninstall.
+
+FREE SOFTWARE AND SCIENTIFIC RESPONSIBILITY
+The project's own code is AGPL-3.0-or-later, free to use, study, modify and
+redistribute under that license. Read LICENSE, DISCLAIMER.txt and the Licenses
+folder for the complete terms. Source/avac-desktop-source.zip contains the
+matching project source; dependency sources and build recipes are also supplied.
+No extra restriction is imposed on modifying/replacing compatible LGPL libraries.
+Help > License and scientific-use notice displays the notice inside the app.
+
+This is development software, provided without warranty to the extent permitted
+by law. It is not a certified hazard assessment, engineering design or emergency
+warning service. Numerical outputs require validation, uncertainty assessment
+and appropriate independent professional review. See DISCLAIMER.txt and AGPL
+sections 15-17. Mandatory legal rights and liabilities cannot be waived by this
+notice. A lawyer should review any final public-distribution liability wording.
+
+FIRST INSTALLATION CHECK
+The installer and its installed native workflow are tested on the development
+computer with a minimal Windows PATH and isolated app-data directories. This
+does not establish acceptance on a freshly installed Windows VM. On the target
+PC, launch the program, create/save a small case, run AVAC and optional WAVE,
+close/reopen the project and inspect the results. Test update/uninstallation
+while confirming that your project folder remains intact.

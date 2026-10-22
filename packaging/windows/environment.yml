@@ -1,0 +1,16 @@
+name: avac-desktop
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12.15
+  - gdal=3.13.3
+  - numpy=2.5.4
+  - libblas=*=*openblas
+  - libcblas=*=*openblas
+  - liblapack=*=*openblas
+  - pip
+  - pip:
+      - PySide6==6.8.3
+      - PyYAML==6.0.3
+      - matplotlib==3.11.2
+      - pyqtgraph==0.14.0
