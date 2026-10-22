@@ -150,10 +150,12 @@ class WaveResults:
             m = raster.metadata
             image = gdal.GetDriverByName("MEM").Create("", len(x), len(y), 1, gdal.GDT_Byte)
             image.SetGeoTransform((m["xmin"], m["cellsize"], 0, m["ymax"], 0, -m["cellsize"]))
-            image.SetProjection(spatial_reference(self.discovery.crs_authid).ExportToWkt())
+            srs = spatial_reference(self.discovery.crs_authid)
+            if srs is not None:
+                image.SetProjection(srs.ExportToWkt())
             image.GetRasterBand(1).WriteArray(wet[::-1].astype(np.uint8))
             vector = ogr.GetDriverByName("Memory").CreateDataSource("")
-            layer = vector.CreateLayer("lake", spatial_reference(self.discovery.crs_authid), ogr.wkbPolygon)
+            layer = vector.CreateLayer("lake", srs, ogr.wkbPolygon)
             band = image.GetRasterBand(1)
             gdal.Polygonize(band, band, layer, -1, [])
             rings = []

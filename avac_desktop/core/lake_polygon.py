@@ -121,10 +121,12 @@ def write_lake_polygon(
     if source is None:
         raise RuntimeError("GDAL could not create the lake-mask raster.")
     source.SetGeoTransform((xmin, cell, 0.0, ymax, 0.0, -cell))
-    spatial_reference = osr.SpatialReference()
-    if spatial_reference.SetFromUserInput(str(raster.crs_authid)) != 0:
-        raise ValueError("Terrain DEM CRS cannot be written to the lake polygon.")
-    source.SetProjection(spatial_reference.ExportToWkt())
+    spatial_reference = None
+    if raster.crs_authid:
+        spatial_reference = osr.SpatialReference()
+        if spatial_reference.SetFromUserInput(str(raster.crs_authid)) != 0:
+            raise ValueError("Terrain DEM CRS cannot be written to the lake polygon.")
+        source.SetProjection(spatial_reference.ExportToWkt())
     band = source.GetRasterBand(1)
     band.WriteArray(np.flipud(values))
 

@@ -33,11 +33,30 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def spatial_reference(text: str) -> osr.SpatialReference:
+def spatial_reference(text: str) -> osr.SpatialReference | None:
+    if not text or not text.strip():
+        return None
     srs = osr.SpatialReference()
     srs.SetFromUserInput(text)
     srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
     return srs
+
+
+def has_geographic_reference(terrain: Terrain) -> bool:
+    """Local/unreferenced coordinates cannot locate online background tiles."""
+    srs = spatial_reference(terrain.wkt or terrain.raster.crs_authid)
+    return srs is not None and not srs.IsLocal()
+
+
+def geometry_transform(source, target_crs: str):
+    """Use raw XY in an unreferenced project; otherwise transform known CRSs."""
+    target = spatial_reference(target_crs)
+    if target is None or target.IsLocal():
+        return None
+    if source is None:
+        raise ValueError("Geometry has no CRS. Provide its CRS before importing into a georeferenced project.")
+    source = spatial_reference(source.ExportToWkt())
+    return None if source.IsSame(target) else osr.CoordinateTransformation(source, target)
 
 
 def read_terrain(path: str | Path, band: int = 1) -> Terrain:
@@ -63,9 +82,7 @@ def read_terrain(path: str | Path, band: int = 1) -> Terrain:
         if not np.isclose(dx, -dy, rtol=0, atol=max(dx, -dy, 1) * 1e-8):
             raise ValueError("AVAC requires square terrain cells.")
         srs = dataset.GetSpatialRef()
-        if srs is None:
-            raise ValueError("DEM has no CRS. Assign the correct projected metre CRS before importing.")
-        if not (srs.IsProjected() or srs.IsLocal()) or not np.isclose(srs.GetLinearUnits(), 1.0, rtol=0, atol=1e-9):
+        if srs is not None and (not (srs.IsProjected() or srs.IsLocal()) or not np.isclose(srs.GetLinearUnits(), 1.0, rtol=0, atol=1e-9)):
             raise ValueError("DEM must use a projected or local CRS in metres; geographic degrees are not solver distances.")
         source_band = dataset.GetRasterBand(band)
         north = source_band.ReadAsArray().astype(np.float64)
@@ -79,8 +96,10 @@ def read_terrain(path: str | Path, band: int = 1) -> Terrain:
         north[~np.isfinite(north)] = np.nan
         if not np.any(np.isfinite(north)):
             raise ValueError("DEM contains no finite elevation samples.")
-        wkt = srs.ExportToWkt()
-        authority, code = srs.GetAuthorityName(None), srs.GetAuthorityCode(None)
+        # Keep an absent CRS absent, including in saved inputs and exports.
+        # The UI warns that these local XY/elevation values are assumed metres.
+        wkt = srs.ExportToWkt() if srs is not None else ""
+        authority, code = (srs.GetAuthorityName(None), srs.GetAuthorityCode(None)) if srs is not None else (None, None)
         crs = f"{authority}:{code}" if authority and code else wkt
     ymin, xmax = ymax + height * dy, xmin + width * dx
     z = np.ascontiguousarray(north[::-1])
@@ -101,12 +120,9 @@ def read_polygons(path: str | Path, target_wkt: str, layer_name: str | None = No
     if layer_name is None and dataset.GetLayerCount() != 1:
         raise ValueError("Dataset contains multiple layers; choose a single polygon layer explicitly.")
     layer = dataset.GetLayerByName(layer_name) if layer_name else dataset.GetLayer(0)
-    if layer is None or layer.GetSpatialRef() is None:
-        raise ValueError("Release polygon layer needs a valid CRS.")
-    source = layer.GetSpatialRef().Clone()
-    source.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-    target = spatial_reference(target_wkt)
-    transformation = None if source.IsSame(target) else osr.CoordinateTransformation(source, target)
+    if layer is None:
+        raise ValueError("Polygon layer is unavailable.")
+    transformation = geometry_transform(layer.GetSpatialRef(), target_wkt)
     rings: Rings = []
     for feature in layer:
         geometry = feature.GetGeometryRef()

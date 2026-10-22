@@ -35,6 +35,10 @@ source CRS is required. Imported geometries are transformed into the current
 map CRS in memory. Saving/reopening reloads the same disk-backed geometries.
 
 `inputs` references AVAC DEM, release polygons and optional lake polygon.
+An absent DEM CRS stays absent in copied inputs, run metadata and raster/vector
+exports. Coordinates and elevations are treated as metres in a local XY plane.
+Reopening retains this interpretation, warns in the Console and disables online
+backgrounds; imported geometry is not reprojected into an invented CRS.
 Optional `inputs.release_export_source` retains the original release filename
 for the export chooser, even when edited geometry uses an owned snapshot.
 `provenance` stores SHA-256 hashes of imported terrain/release files. A mismatch

@@ -25,6 +25,18 @@ Linux, macOS and Windows ARM distributions are not provided. Scientific results
 need independent validation. Read [limitations](docs/LIMITATIONS.md) and the
 [scientific-use and warranty notice](DISCLAIMER.txt) before using model output.
 
+## Windows installer
+
+Download the setup EXE and its SHA-256 checksum from
+[the latest preview release](https://github.com/cgotelli/AVAC-Desktop/releases/tag/v0.1.1-preview.1).
+The offline installer includes Python, GIS/UI libraries and both native solvers.
+It is unsigned; Windows may show an unknown-publisher notice.
+
+DEMs without a CRS are supported as local XY grids with metres assumed. The
+Console reports a warning and turns off online backgrounds for those grids.
+Imported geometries must already use the same coordinates; no CRS is invented
+and no reprojection is performed in an unreferenced project.
+
 ## Run from source
 
 Install [Miniforge](https://github.com/conda-forge/miniforge) or
@@ -49,8 +61,8 @@ the application.
 The interface can open before native solvers are built. **Prepare** and **Run**
 require the AVAC/WAVE runtime archives: follow [building](docs/BUILDING.md) to
 compile and package the included native source. These archives and installers
-are build outputs, not tracked repository files. This repository does not
-currently promise a published installer download.
+are build outputs, not tracked repository files. Setup binaries are distributed
+through GitHub Releases separately from the source tree.
 
 Optional tutorial data are downloaded separately, keeping the source checkout
 small:

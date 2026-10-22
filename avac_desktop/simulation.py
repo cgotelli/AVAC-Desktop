@@ -32,11 +32,11 @@ def signature(session: ProjectSession) -> str:
 def validate(session: ProjectSession, *, check_sources: bool = True) -> list[str]:
     issues: list[str] = []
     if session.terrain is None:
-        return ["Import a projected terrain DEM first."]
+        return ["Import a terrain DEM first."]
     if not session.configuration:
         return ["No parameters loaded. Use File → Load standard parameters or Load AVAC configuration before preparation."]
     if not session.rings or session.release_path is None:
-        issues.append("Import release polygons in a known CRS.")
+        issues.append("Import or draw release polygons in the terrain's coordinates.")
     try:
         controls = controlled_values(session.configuration)
         issues.extend(validate_controlled_values(controls))
@@ -96,7 +96,7 @@ def prepare(session: ProjectSession, task=None) -> dict[str, Any]:
                                            session.terrain.raster.crs_authid, session.terrain.raster.crs_authid)
     template = root / "inputs" / "desktop_configuration.yaml"
     atomic_text(template, yaml.safe_dump(session.configuration, sort_keys=False))
-    metadata = dict(plugin="AVAC Desktop", desktop_version="0.1.0", source_dem=str(session.terrain.source),
+    metadata = dict(plugin="AVAC Desktop", desktop_version="0.1.1", source_dem=str(session.terrain.source),
                     dem_crs=session.terrain.raster.crs_authid, release_layer=str(session.release_path),
                     runtime=str(runtime), execution_mode="bundled_runtime", input_provenance=provenance,
                     desktop_input_signature=signature(session), desktop_project_id=session.project_id)

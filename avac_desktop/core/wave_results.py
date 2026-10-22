@@ -194,8 +194,6 @@ def discover_wave_results(root: str | Path, runtime: str | Path) -> WaveDiscover
     if not frames:
         raise ValueError("No complete Wave fgout0001 frames were found.")
     crs = str(marker.get("crs_authid") or "")
-    if not crs:
-        raise ValueError("This Wave scenario lacks CRS metadata. Reprepare it with the current plugin before loading results.")
     origin_iso = _wave_temporal_origin_iso(root, marker)
     return WaveDiscovery(
         root, output, runtime, crs, str(config["output"]["output_format"]),

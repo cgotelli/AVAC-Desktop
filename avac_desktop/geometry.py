@@ -31,6 +31,9 @@ def export_release_polygons(path, rings, crs):
             if layer.CreateFeature(feature) != ogr.OGRERR_NONE:
                 raise ValueError("Could not export release polygons.")
         feature = layer = dataset = None
+        if driver_name == "GeoJSON" and not crs:
+            # GeoJSON without a crs member otherwise defaults to WGS84 in OGR.
+            staged.write_text(release_geojson(rings, crs), encoding="utf-8")
         for item in Path(temporary).iterdir():
             os.replace(item, path.parent/item.name)
         if path.suffix.lower() == ".shp":
@@ -60,5 +63,5 @@ def release_geojson(rings, crs):
             raise ValueError("Invalid polygon. Avoid crossing edges and keep holes inside their exterior.")
         features.append(dict(type="Feature", properties={}, geometry=geometry))
     return json.dumps(dict(type="FeatureCollection", name="AVAC releases",
-                           crs=dict(type="name", properties=dict(name=crs)), features=features),
+                           crs=dict(type="name", properties=dict(name=crs)) if crs else None, features=features),
                       indent=2, allow_nan=False) + "\n"

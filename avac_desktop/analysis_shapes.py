@@ -5,7 +5,7 @@ import uuid
 import numpy as np
 from osgeo import ogr
 
-from .geo import spatial_reference
+from .geo import spatial_reference, geometry_transform
 
 
 def validate(kind, coords):
@@ -68,13 +68,7 @@ def read_shapes(path, crs):
     features = []
     try:
         layer = dataset.GetLayer(0)
-        source = layer.GetSpatialRef()
-        if source is None:
-            raise ValueError("Sampling shapefile has no CRS. Provide its .prj file.")
-        target = spatial_reference(crs)
-        source = spatial_reference(source.ExportToWkt())
-        from osgeo import osr
-        transform = None if source.IsSame(target) else osr.CoordinateTransformation(source, target)
+        transform = geometry_transform(layer.GetSpatialRef(), crs)
         for item in layer:
             geometry = item.GetGeometryRef()
             if geometry is None or geometry.IsEmpty():

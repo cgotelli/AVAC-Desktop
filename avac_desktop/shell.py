@@ -26,7 +26,7 @@ from avac_desktop.core.runtime import validate_runtime
 from .analysis import LABELS, Results, export_geotiff, write_gauge
 from .execution import NativeJob
 from .forms import ConfigurationPanels, muted
-from .geo import read_terrain, read_polygons, sha256_file
+from .geo import read_terrain, read_polygons, sha256_file, has_geographic_reference
 from .map_view import MapView, terrain_display
 from .project import ProjectSession, load_project, save_project
 from . import simulation, workflow
@@ -386,7 +386,7 @@ class MainWindow(QMainWindow):
         help_menu = self.help_menu = self.main_menu.addMenu("Help")
         help_menu.addAction("Load tutorial", self.load_tutorial)
         help_menu.addAction("License and scientific-use notice", self.show_license_notice)
-        help_menu.addAction("About AVAC Desktop", lambda: QMessageBox.about(self, "AVAC Desktop", "AVAC Desktop 0.1.0\nFree software: AGPL-3.0-or-later.\nProvided without warranty, to the extent permitted by law.\nScientific desktop development build; not a certified hazard assessment.\nSee Help → License and scientific-use notice."))
+        help_menu.addAction("About AVAC Desktop", lambda: QMessageBox.about(self, "AVAC Desktop", "AVAC Desktop 0.1.1\nFree software: AGPL-3.0-or-later.\nProvided without warranty, to the extent permitted by law.\nScientific desktop development build; not a certified hazard assessment.\nSee Help → License and scientific-use notice."))
         # PySide 6.8 can invalidate a menu when an ephemeral menuAction wrapper
         # is collected after QAction.menu(); retain those wrappers explicitly.
         self._menu_actions = self.main_menu.actions()
@@ -458,14 +458,15 @@ class MainWindow(QMainWindow):
     def _update_project(self):
         self.setWindowTitle(f"{self.session.name}{' •' if self.session.dirty else ''} — AVAC Desktop")
         if not self.session.terrain:
-            self.panels.terrain_info.setText("Import a projected terrain DEM and release polygons to begin.\n\nParameters: " + ("loaded" if self.session.configuration else "none loaded — see File menu"))
+            self.panels.terrain_info.setText("Import a terrain DEM and release polygons to begin.\n\nParameters: " + ("loaded" if self.session.configuration else "none loaded — see File menu"))
             self.panels.release_info.setText("No release polygons loaded.")
         if self.session.terrain:
             raster = self.session.terrain.raster
             m = raster.metadata
             finite = np.isfinite(raster.z)
-            self.panels.terrain_info.setText(f"{self.session.terrain.source.name}\n\nCRS: {raster.crs_authid}\nGrid: {m['ncols']:,} × {m['nrows']:,}\nNative cell: {m['cellsize']:g} m\nElevation: {np.nanmin(raster.z):.4g}–{np.nanmax(raster.z):.4g} m\nNoData: {100*(1-np.mean(finite)):.3g}%\nScientific array: {raster.z.nbytes/1024**2:.1f} MiB\n\nBounds [m]\nE {m['xmin']:.3f} … {m['xmax']:.3f}\nN {m['ymin']:.3f} … {m['ymax']:.3f}\n\nProject folder: {self.session.project_path.parent if self.session.project_path else 'Save the project to choose its folder'}")
-            self.panels.release_info.setText(f"{len(self.session.rings)} polygons in {raster.crs_authid}\n{self.session.release_path or 'Import release polygons'}")
+            crs_label = raster.crs_authid or "None (local XY; metres assumed)"
+            self.panels.terrain_info.setText(f"{self.session.terrain.source.name}\n\nCRS: {crs_label}\nGrid: {m['ncols']:,} × {m['nrows']:,}\nNative cell: {m['cellsize']:g} m\nElevation: {np.nanmin(raster.z):.4g}–{np.nanmax(raster.z):.4g} m\nNoData: {100*(1-np.mean(finite)):.3g}%\nScientific array: {raster.z.nbytes/1024**2:.1f} MiB\n\nBounds [m]\nE {m['xmin']:.3f} … {m['xmax']:.3f}\nN {m['ymin']:.3f} … {m['ymax']:.3f}\n\nProject folder: {self.session.project_path.parent if self.session.project_path else 'Save the project to choose its folder'}")
+            self.panels.release_info.setText(f"{len(self.session.rings)} polygons in {crs_label}\n{self.session.release_path or 'Import release polygons'}")
 
     def load_paths(self, dem: Path, release: Path | None = None, *, tutorial=False, preserve_project_state=False):
         if self.tasks.active or not self._can_replace():
@@ -536,7 +537,7 @@ class MainWindow(QMainWindow):
 
     def import_release(self):
         if not self.session.terrain:
-            self._error("Import a terrain DEM first so release geometries have a target CRS.")
+            self._error("Import a terrain DEM first so release geometries share its coordinates.")
             return
         if self.tasks.active or self.job.running:
             self._error("Finish the current task/run before replacing its inputs.")
@@ -702,6 +703,7 @@ class MainWindow(QMainWindow):
             self.session.dirty = True
 
     def _restore_map_layers(self):
+        self._update_background_availability()
         self.map.set_lake(self._lake_rings)
         self.layer_checks["lake"].setVisible(bool(self._lake_rings))
         for key, check in self.layer_checks.items():
@@ -709,6 +711,26 @@ class MainWindow(QMainWindow):
             check.setChecked(self.session.layers.get(key, True))
             check.blockSignals(False)
             self._layer(key, check.isChecked())
+
+    def _update_background_availability(self):
+        terrain = self.map.terrain
+        available = terrain is None or has_geographic_reference(terrain)
+        self.background.setEnabled(available)
+        self.background.setToolTip("Optional online background. A geographic CRS is required." if available else
+                                   "Backgrounds are unavailable for terrain without a geographic CRS.")
+        if available:
+            self._background_warning_key = None
+            return
+        self.background.blockSignals(True)
+        self.background.setCurrentIndex(self.background.findData("none"))
+        self.background.blockSignals(False)
+        self.map.basemap.set_provider("none")
+        key = (str(terrain.source), terrain.source_hash, terrain.wkt)
+        if getattr(self, "_background_warning_key", None) != key:
+            reason = "DEM has no CRS; coordinates and elevations are assumed to be metres" if not terrain.raster.crs_authid else "DEM uses a local Cartesian CRS"
+            self._append_log(f"Warning: {reason}. Background maps and satellite imagery are disabled. "
+                             "Imported release, lake, profile and gauge geometries use the same XY coordinates without reprojection.")
+            self._background_warning_key = key
 
     def _configuration_changed(self):
         self.session.dirty = True
@@ -1662,6 +1684,7 @@ class MainWindow(QMainWindow):
         self._pipeline_snapshot = None
         self._gauge_cache_key = None
         self.map.clear()
+        self._update_background_availability()
         self.map.time_text = ""
         self.map.styles = deepcopy(session.raster_styles)
         self.console.clear()

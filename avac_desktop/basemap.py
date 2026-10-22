@@ -12,7 +12,7 @@ from PySide6.QtGui import QImage, QPainter, QPolygonF, QTransform
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkDiskCache, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import QGraphicsItem
 
-from .geo import spatial_reference
+from .geo import spatial_reference, has_geographic_reference
 from .preferences import settings
 
 WORLD = 20037508.342789244
@@ -114,6 +114,9 @@ class Basemap(QObject):
     def set_provider(self, provider):
         self.clear()
         self.provider = provider if provider in PROVIDERS else "none"
+        if self.provider != "none" and self.view.terrain and not has_geographic_reference(self.view.terrain):
+            self.provider = "none"
+            self.message.emit("Background disabled: the terrain has no geographic CRS.")
         self.view.attribution.setText("")
         if self.provider != "none":
             _, text, url = PROVIDERS[self.provider]
@@ -127,6 +130,10 @@ class Basemap(QObject):
             return
         if not self.view.terrain:
             self.message.emit("Load a georeferenced terrain before displaying an online background.")
+            return
+        if not has_geographic_reference(self.view.terrain):
+            self.set_provider("none")
+            self.message.emit("Background disabled: the terrain has no geographic CRS.")
             return
         try:
             self._refresh()

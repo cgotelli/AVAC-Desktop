@@ -1,4 +1,4 @@
-AVAC Desktop 0.1.0 preview - Windows offline installer
+AVAC Desktop 0.1.1 preview - Windows offline installer
 
 REQUIREMENTS
 Windows 11 x64, Intel or AMD processor. Windows 10, ARM and 32-bit Windows
@@ -18,7 +18,7 @@ not an external Intel MKL/MPI installation. Core operation is offline.
 Internet access is only needed for optional online background maps.
 
 INSTALL
-Copy AVACDesktop-0.1.0-preview.1-Setup-x64.exe to the other computer and run it.
+Copy AVACDesktop-0.1.1-preview.1-Setup-x64.exe to the other computer and run it.
 Review the scientific-use notice and license, keep the default options and
 installation folder, then choose Install. Start AVAC Desktop from the Start
 menu or desktop shortcut. Install for each Windows user who needs the software.
@@ -36,6 +36,9 @@ under that folder; completed runs register automatically. Move the whole case
 folder to transfer it and open its .avacproj. Solvers extract their bundled
 runtime into %APPDATA%\AVAC Desktop\runtime\desktop on first use; no download is made.
 First preparation can take longer while extraction and integrity checks finish.
+DEMs without a CRS are supported as local XY grids with metres assumed. The
+Console warns and online map/satellite backgrounds are disabled. Release,
+lake, profile and gauge inputs must already share the DEM's XY coordinates.
 
 UPDATE AND UNINSTALL
 Close AVAC Desktop before installing another build or uninstalling it. Run

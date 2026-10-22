@@ -506,7 +506,7 @@ class MapView(QGraphicsView):
         if self.terrain:
             x, y = self.from_scene(self.mapToScene(event.position().toPoint()))
             hit = probe(self.field_raster or self.terrain.raster, x, y)
-            text = f"E {x:,.2f}  N {y:,.2f}  |  {self.terrain.raster.crs_authid}"
+            text = f"E {x:,.2f}  N {y:,.2f}  |  {self.terrain.raster.crs_authid or 'Unreferenced XY [m]'}"
             if hit:
                 row, col, value = hit
                 text += f"  |  cell ({row}, {col})  ·  {value:.8g}" if np.isfinite(value) else "  |  NoData"

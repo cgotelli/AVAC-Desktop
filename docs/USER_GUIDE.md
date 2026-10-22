@@ -7,9 +7,12 @@ project retains its own configuration.
 
 ## Prepare and run
 
-1. Import a terrain DEM in **Terrain & release**. It must be north-up, have
-   square cells and use a projected metre CRS. Fill/remove NoData before using
-   it for computation. Desktop does not automatically reproject or resample it.
+1. Import a terrain DEM in **Terrain & release**. It must be north-up and have
+   square cells. A projected metre CRS is supported, and a DEM without a CRS
+   is treated as local XY coordinates with coordinates/elevations assumed to
+   be metres. The Console warns and backgrounds are disabled in that case.
+   Fill/remove NoData before computation. Desktop does not automatically
+   reproject or resample the terrain.
 2. Import release polygons from GeoJSON, a single-layer GeoPackage or a complete
    shapefile, or draw releases on the map. Importing preserves the original
    source. Edited geometry is saved separately in the project.
@@ -53,10 +56,14 @@ remain available. See [project format](PROJECT_FORMAT.md) for details.
 Select the result variable and frame/time. The map palette, opacity, limits and
 zero transparency affect display only. The lower-left layer list controls map
 visibility, including profiles and gauges. Online backgrounds require internet
-access and carry provider attribution; numerical terrain stays unchanged.
+access and a geographic CRS and carry provider attribution; numerical terrain
+stays unchanged. Without a CRS, releases, lakes, profiles and gauges are read in
+their existing XY coordinates without transformation. Ensure they align with
+the DEM. Unreferenced saved inputs and exported results retain an absent CRS.
 
 Create/import profile lines and point gauges from their analysis panels.
-Geometry is stored in shapefiles; keep all sidecars together. Profiles sample a
+Geometry is stored in shapefiles; keep all sidecars together. A `.prj` is not
+required for an unreferenced project. Profiles sample a
 line through the current result. Gauges show time-dependent results at a point;
 a maximum-over-time product does not provide a gauge time series. Sampling
 geometry persists and can be reused with another valid result variable.

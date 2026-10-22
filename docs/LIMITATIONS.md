@@ -5,14 +5,19 @@ AVAC Desktop is an early scientific application preview. Windows 11 x64
 installers, remote execution and integrated CLI/HPC/MPI workflows are not
 provided. Microsoft Store submission and certification remain unfinished.
 
-Terrain must be north-up, square-cell and projected in metres, with no NoData
-in the computational DEM. Automatic clipping, reprojection and resampling are
+Terrain must be north-up and square-cell, with no NoData in the computational
+DEM. A CRS may be absent: coordinates/elevations are then assumed metres and
+imported geometry must already align in the same XY plane. Online backgrounds
+are disabled with a Console warning. Defined CRSs must still be projected or
+local in metres. Automatic clipping, reprojection and resampling are
 not provided. The exact raster reader has a 100-million-cell allocation guard;
 it is not a tiled/out-of-core numerical reader. Multilayer vector containers
 should be exported to a selected single layer before import.
 
 Profile and gauge files support single-line and single-point features. Split
-multipart features first and retain a known CRS and all shapefile sidecars.
+multipart features first and retain all shapefile sidecars. A known source CRS
+is needed for transformation into a georeferenced project; unreferenced projects
+read the existing XY coordinates directly.
 Derived sampling caches may regenerate after a project is moved. Native solver
 restart/resume and single-file project archives are not implemented.
 
