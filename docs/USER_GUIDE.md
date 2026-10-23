@@ -85,7 +85,10 @@ patches. Check that the finer patches cover the snow releases. Each level has
 a different colour. The map shows only mesh lines, without a mesh annotation.
 With one AMR level selected, the mesh is uniform. Under Numerics, choose the
 smallest cell size, the number of AVAC AMR levels and the update interval in
-simulated seconds (default: 5 s). Adjacent levels always have a 1:2 ratio; WAVE
+simulated seconds (default: 5 s). New projects start with one level (a uniform
+mesh); choose more levels to enable AMR. Older saved defaults also start at one
+level unless you explicitly save another level in Settings. Existing project
+and imported configuration levels are retained. Adjacent levels always have a 1:2 ratio; WAVE
 uses a uniform mesh at the smallest requested size. A very long update interval
 can enlarge the safety buffer and increase cost. Mesh spacing need not be an
 exact multiple of DEM resolution; whole base cells are fitted inside the DEM,
@@ -130,3 +133,12 @@ water rather than summing their physical values.
 
 Read [limitations](LIMITATIONS.md) and the [scientific-use notice](../DISCLAIMER.txt)
 when interpreting results.
+
+## Uninstall
+
+Automatic updates keep preferences and reusable caches. A normal uninstall
+removes the complete application folder, including additional files inside it,
+plus Desktop caches, drafts and saved preferences. Projects in other folders
+remain available. Keep your projects in dedicated folders outside the installed
+application. Close AVAC Desktop before uninstalling; if a file is locked,
+cleanup reports failure and preserves the uninstaller for a retry.

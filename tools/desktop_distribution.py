@@ -214,7 +214,7 @@ def snapshot_source():
 
 
 def installer_files():
-    """Record the payload and compile exact, non-recursive uninstall paths."""
+    """Record the payload and compile file removals for the upgrade mode."""
     bundle = ROOT/"dist"/"AVACDesktop"
     rows = {}
     for folder, prefix in ((bundle, Path()), (STAGE/"Licenses", Path("Licenses")), (STAGE/"Source", Path("Source"))):
@@ -225,7 +225,7 @@ def installer_files():
     for name in ("INSTALL.txt", "LICENSE", "DISCLAIMER.txt", "THIRD_PARTY_NOTICES.md"):
         path = STAGE/name
         rows[name] = dict(path=name, bytes=path.stat().st_size, sha256=sha(path))
-    write_json(STAGE/"INSTALLATION_FILES.json", dict(format=1, version="0.1.7-preview.1", files=list(rows.values())))
+    write_json(STAGE/"INSTALLATION_FILES.json", dict(format=1, version="0.1.8-preview.1", files=list(rows.values())))
     paths = [Path(name) for name in rows]+[Path("INSTALLATION_FILES.json")]
     directories = set()
     for path in paths:

@@ -8,10 +8,10 @@ Name "AVAC Desktop ${AVAC_VERSION}"
 OutFile "${OUTPUT_FILE}"
 InstallDir ""
 BrandingText "AVAC Desktop - free scientific software"
-VIProductVersion "0.1.7.1"
+VIProductVersion "0.1.8.1"
 VIAddVersionKey /LANG=1033 "ProductName" "AVAC Desktop"
 VIAddVersionKey /LANG=1033 "FileDescription" "AVAC Desktop preview offline installer"
-VIAddVersionKey /LANG=1033 "FileVersion" "0.1.7.1"
+VIAddVersionKey /LANG=1033 "FileVersion" "0.1.8.1"
 VIAddVersionKey /LANG=1033 "LegalCopyright" "AVAC Desktop contributors; third-party notices included"
 
 !include MUI2.nsh
@@ -48,6 +48,7 @@ VIAddVersionKey /LANG=1033 "LegalCopyright" "AVAC Desktop contributors; third-pa
 !define MUI_FINISHPAGE_SHOWREADME "$INSTDIR\INSTALL.txt"
 !define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
 !insertmacro MUI_PAGE_FINISH
+!define MUI_UNCONFIRMPAGE_TEXT_TOP "$(AvacUninstallNotice)"
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "English"
@@ -64,6 +65,11 @@ VIAddVersionKey /LANG=1033 "LegalCopyright" "AVAC Desktop contributors; third-pa
 Var PreviousDir
 Var RegisteredDir
 Var SetDefaultAssociation
+Var IsUpgrade
+Var CleanupFailed
+Var HadDesktopShortcut
+Var ResidueSafe
+!include "${__FILEDIR__}\cleanup.nsh"
 
 Function .onInit
   StrCpy $LANGUAGE ${LANG_ENGLISH}
@@ -101,27 +107,30 @@ Function ValidateDirectory
   ; NSIS already validates absolute /D and directory-page paths. Its
   ; GetFullPathName rejects some not-yet-created folders; do not require
   ; the installation directory to exist before first installation.
-  ClearErrors
-  ${If} $INSTDIR == ""
-  ${OrIf} $INSTDIR == "$PROFILE"
-  ${OrIf} $INSTDIR == "$DOCUMENTS"
-  ${OrIf} $INSTDIR == "$DESKTOP"
-  ${OrIf} $INSTDIR == "$LOCALAPPDATA"
-  ${OrIf} $INSTDIR == "$WINDIR"
-  ${OrIf} $INSTDIR == "$PROGRAMFILES64"
-  ${OrIf} $INSTDIR == "$TEMP"
-    MessageBox MB_OK|MB_ICONSTOP "$(AvacText13)" /SD IDOK
-    SetErrorLevel 1603
-    Abort
-  ${EndIf}
+  !insertmacro AVAC_CHECK_INSTALL_PATH DirectoryUnsafe
   IfFileExists "$INSTDIR\*.*" 0 DirectoryOK
   ReadINIStr $0 "$INSTDIR\avac-installation.ini" "AVAC" "Product"
   ${If} $0 != "${PRODUCT_ID}"
+    ${If} $PreviousDir == ""
+    ${AndIf} $INSTDIR == "$LOCALAPPDATA\Programs\AVAC Desktop"
+      StrCpy $ResidueSafe 1
+      Push $INSTDIR
+      Call CheckLegacyResidue
+      ${If} $ResidueSafe == 1
+        WriteINIStr "$INSTDIR\avac-installation.ini" "AVAC" "Product" "${PRODUCT_ID}"
+        Goto DirectoryOK
+      ${EndIf}
+    ${EndIf}
     MessageBox MB_OK|MB_ICONSTOP "$(AvacText14)" /SD IDOK
     SetErrorLevel 1603
     Abort
   ${EndIf}
   DirectoryOK:
+    Return
+  DirectoryUnsafe:
+    MessageBox MB_OK|MB_ICONSTOP "$(AvacText13)" /SD IDOK
+    SetErrorLevel 1603
+    Abort
 FunctionEnd
 
 Function CheckPreviousInstallation
@@ -136,7 +145,7 @@ Function CheckPreviousInstallation
     FileOpen $0 "$PreviousDir\AVACDesktop.exe" a
     IfErrors PreviousInUse
     FileClose $0
-    ExecWait '$\"$PreviousDir\Uninstall.exe$\" /S _?=$PreviousDir' $0
+    ExecWait '$\"$PreviousDir\Uninstall.exe$\" /S /UPDATE _?=$PreviousDir' $0
     ${If} $0 != 0
       MessageBox MB_OK|MB_ICONSTOP "$(AvacText16)" /SD IDOK
       SetErrorLevel 1603
@@ -224,12 +233,21 @@ Section "$(AvacText9)" AssociationSection
 SectionEnd
 
 Function un.onInit
+  StrCpy $IsUpgrade 0
+  StrCpy $CleanupFailed 0
+  ${GetParameters} $0
+  ClearErrors
+  ${GetOptions} "$0" "/UPDATE" $1
+  ${IfNot} ${Errors}
+    StrCpy $IsUpgrade 1
+  ${EndIf}
   ReadINIStr $LANGUAGE "$INSTDIR\avac-installation.ini" "AVAC" "InstallerLanguage"
   ${If} $LANGUAGE == ""
     StrCpy $LANGUAGE ${LANG_ENGLISH}
   ${EndIf}
   SetShellVarContext current
   SetRegView 64
+  !insertmacro AVAC_CHECK_INSTALL_PATH UninstallUnsafePath
   ReadINIStr $0 "$INSTDIR\avac-installation.ini" "AVAC" "Product"
   ${If} $0 != "${PRODUCT_ID}"
     MessageBox MB_OK|MB_ICONSTOP "$(AvacText19)" /SD IDOK
@@ -240,6 +258,10 @@ Function un.onInit
   IfErrors UninstallInUse
   FileClose $0
   Return
+  UninstallUnsafePath:
+    MessageBox MB_OK|MB_ICONSTOP "$(AvacText13)" /SD IDOK
+    SetErrorLevel 1603
+    Abort
   UninstallInUse:
     MessageBox MB_OK|MB_ICONSTOP "$(AvacText20)" /SD IDOK
     SetErrorLevel 1603
@@ -249,9 +271,59 @@ FunctionEnd
 Section "Uninstall"
   ReadRegStr $RegisteredDir HKCU "${REGKEY}" "InstallLocation"
   ReadINIStr $SetDefaultAssociation "$INSTDIR\avac-installation.ini" "AVAC" "SetDefaultAssociation"
+  ReadINIStr $HadDesktopShortcut "$INSTDIR\avac-installation.ini" "AVAC" "DesktopShortcut"
+  ; Leave the installation directory before removing it.
+  SetOutPath "$TEMP"
+  ${If} $IsUpgrade == 1
+    ; Updates preserve app data, preferences and unrecorded files. Keep the
+    ; ownership marker so an interrupted update remains repairable.
+    !include "${UNINSTALL_FILES}"
+    Goto UninstallDone
+  ${EndIf}
   ${If} $RegisteredDir == $INSTDIR
-    ReadINIStr $0 "$INSTDIR\avac-installation.ini" "AVAC" "DesktopShortcut"
-    ${If} $0 == "1"
+  ${OrIf} $RegisteredDir == ""
+    GetFullPathName $0 "$APPDATA\AVAC Desktop\runtime\desktop"
+    Push $0
+    Call un.RemoveOwnedTree
+    GetFullPathName $0 "$LOCALAPPDATA\AVAC\AVAC Desktop"
+    Push $0
+    Call un.RemoveOwnedTree
+    GetFullPathName $0 "$LOCALAPPDATA\AVAC Desktop"
+    Push $0
+    Call un.RemoveOwnedTree
+    GetFullPathName $0 "$APPDATA\AVAC\AVAC Desktop"
+    Push $0
+    Call un.RemoveOwnedTree
+  ${EndIf}
+  InitPluginsDir
+  CopyFiles /SILENT "$INSTDIR\avac-installation.ini" "$PLUGINSDIR\avac-installation.ini"
+  Push $INSTDIR
+  Call un.RemoveOwnedTree
+  ${If} $CleanupFailed == 1
+    Goto UninstallFailed
+  ${EndIf}
+  ClearErrors
+  Delete "$INSTDIR\Uninstall.exe"
+  IfErrors UninstallFailed
+  Delete "$INSTDIR\avac-installation.ini"
+  RMDir "$INSTDIR"
+  ${If} ${Errors}
+    ; Keep a usable uninstaller and ownership evidence when cleanup cannot
+    ; finish. Never report success after leaving an unmarked occupied folder.
+    CopyFiles /SILENT "$PLUGINSDIR\avac-installation.ini" "$INSTDIR\avac-installation.ini"
+    CopyFiles /SILENT "$EXEPATH" "$INSTDIR\Uninstall.exe"
+    Goto UninstallFailed
+  ${EndIf}
+  ${If} $RegisteredDir == $INSTDIR
+  ${OrIf} $RegisteredDir == ""
+    DeleteRegKey HKCU "Software\AVAC\AVAC Desktop"
+    RMDir "$APPDATA\AVAC Desktop\runtime"
+    RMDir "$APPDATA\AVAC Desktop"
+    RMDir "$LOCALAPPDATA\AVAC"
+    RMDir "$APPDATA\AVAC"
+  ${EndIf}
+  ${If} $RegisteredDir == $INSTDIR
+    ${If} $HadDesktopShortcut == "1"
       Delete "$DESKTOP\AVAC Desktop.lnk"
     ${EndIf}
     Delete "$SMPROGRAMS\AVAC Desktop\AVAC Desktop.lnk"
@@ -273,10 +345,10 @@ Section "Uninstall"
     ${EndIf}
     System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
   ${EndIf}
-  ; Generated exact file deletions, then empty-directory removals. Never use
-  ; recursive deletion: a user may have saved a project in this folder.
-  !include "${UNINSTALL_FILES}"
-  Delete "$INSTDIR\avac-installation.ini"
-  Delete "$INSTDIR\Uninstall.exe"
-  RMDir "$INSTDIR"
+  Goto UninstallDone
+  UninstallFailed:
+    MessageBox MB_OK|MB_ICONSTOP "$(AvacCleanupError)" /SD IDOK
+    SetErrorLevel 1603
+    Abort
+  UninstallDone:
 SectionEnd

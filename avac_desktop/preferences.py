@@ -11,11 +11,17 @@ def settings():
 
 
 def default_configuration():
-    saved = settings().value("defaults/avac_yaml", "")
+    store = settings()
+    saved = store.value("defaults/avac_yaml", "")
     if saved:
         try:
             config = normalize_mesh_configuration(yaml.safe_load(saved))
             if not validate_controlled_values(controlled_values(config)):
+                # Older saved defaults may predate the single-level default.
+                # Only future projects use this migration; project/imported
+                # configurations retain their explicitly recorded levels.
+                if not store.value("defaults/amr_levels_explicit", False, type=bool):
+                    config["computation"]["refinement"] = 1
                 return deepcopy(config)
         except (ValueError, TypeError, KeyError, yaml.YAMLError):
             pass
@@ -47,6 +53,7 @@ def save_defaults(config, theme, wave=None):
         raise ValueError("\n".join(issues))
     store = settings()
     store.setValue("defaults/avac_yaml", yaml.safe_dump(config, sort_keys=False))
+    store.setValue("defaults/amr_levels_explicit", True)
     store.setValue("appearance", theme)
     if wave is not None:
         store.setValue("defaults/wave_yaml", yaml.safe_dump(wave, sort_keys=False))

@@ -34,7 +34,7 @@ need independent validation. Read [limitations](docs/LIMITATIONS.md) and the
 ## Windows installer
 
 Download the setup EXE and its SHA-256 checksum from
-[the latest preview release](https://github.com/cgotelli/AVAC-Desktop/releases/tag/v0.1.7-preview.1).
+[the latest preview release](https://github.com/cgotelli/AVAC-Desktop/releases/tag/v0.1.8-preview.1).
 The offline installer includes Python, GIS/UI libraries and both native solvers.
 It is unsigned; Windows may show an unknown-publisher notice.
 
