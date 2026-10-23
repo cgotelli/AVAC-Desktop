@@ -76,7 +76,7 @@ must be on PATH, or pass its full path with `-MakeNSIS`:
 
 This stages dependency license texts, source archives, available conda build
 recipes/patches and a matching application source snapshot, freezes the app,
-and creates `dist/AVACDesktop-0.1.8-preview.1-Setup-x64.exe` plus its SHA-256
+and creates `dist/AVACDesktop-0.1.9-preview.1-Setup-x64.exe` plus its SHA-256
 file. Source downloads are pinned by
 `packaging/windows/distribution-sources.lock.json`; build caches/logs go under
 ignored `build/`. Internet access is needed for initial dependency/source

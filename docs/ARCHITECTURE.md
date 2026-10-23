@@ -15,6 +15,11 @@ connects the Model & Run and Analyze modes to the application services.
 `project.py` owns `ProjectSession`, serialization and completed-run discovery.
 `project_storage.py` makes saved inputs/results portable. `preferences.py`
 stores user defaults separately from project-specific parameters.
+It also stores up to ten recent project paths as JSON under `projects/recent`.
+Successful manifest opens and saves update this per-user list. The File menu
+reads paths without probing disks/network shares; selecting a missing project
+removes that entry. Recent opens use the same task/unsaved-change guards as
+regular opens. Clearing history leaves project files intact.
 See [project format](PROJECT_FORMAT.md) for the manifest and folder layout.
 
 `map_view.py`, `geometry.py`, `raster_style.py` and `geo.py` handle map

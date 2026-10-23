@@ -72,6 +72,14 @@ the `.avacproj`. Completed calculations are linked automatically; after closing
 the application, use **File > Open project** to see the existing results without
 rerunning them. Parameter/geometry edits still need Save.
 
+**File > Open recent** lists the ten most recently opened or saved projects,
+newest first, and remembers them between sessions. Hover over an entry to see
+its complete path. **Clear list** removes the history without deleting projects.
+If a project has moved or been deleted, selecting its old entry removes that
+entry and reports the missing path in the Console. Use **Open project** to find
+it in its new location. Opening a recent project uses the usual unsaved-changes
+prompt and cannot replace a project while a task or simulation is active.
+
 Move or back up the entire folder. Moving only the `.avacproj` does not move its
 data. Save As to another folder copies project-owned inputs and results. Older
 projects that still refer to external inputs need one Save while those inputs

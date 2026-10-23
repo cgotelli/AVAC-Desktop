@@ -1,5 +1,8 @@
 """Per-user defaults. Project scientific values remain independent snapshots."""
 from copy import deepcopy
+import json
+import os
+from pathlib import Path
 import yaml
 from PySide6.QtCore import QSettings
 from avac_desktop.core.configuration import controlled_values, normalize_mesh_configuration, load_complete_configuration, validate_controlled_values
@@ -8,6 +11,59 @@ from avac_desktop.core.runtime_assets import default_template_path
 
 def settings():
     return QSettings("AVAC", "AVAC Desktop")
+
+
+MAX_RECENT_PROJECTS = 10
+
+
+def recent_projects():
+    """Read ordered paths without probing disks/network shares during menu use."""
+    try:
+        paths = json.loads(settings().value("projects/recent", "[]", type=str))
+    except (ValueError, TypeError):
+        return []
+    if not isinstance(paths, list):
+        return []
+    result, seen = [], set()
+    for value in paths:
+        if not isinstance(value, str) or not value or "\0" in value:
+            continue
+        path = Path(value)
+        if not path.is_absolute():
+            continue
+        key = os.path.normcase(os.path.abspath(value))
+        if key not in seen:
+            result.append(path)
+            seen.add(key)
+        if len(result) == MAX_RECENT_PROJECTS:
+            break
+    return result
+
+
+def _write_recent_projects(paths):
+    store = settings()
+    store.setValue("projects/recent", json.dumps([str(path) for path in paths], ensure_ascii=False))
+    store.sync()
+
+
+def remember_project(path):
+    path = Path(os.path.abspath(os.path.expanduser(os.fspath(path))))
+    key = os.path.normcase(str(path))
+    previous = [item for item in recent_projects()
+                if os.path.normcase(os.path.abspath(item)) != key]
+    _write_recent_projects([path, *previous][:MAX_RECENT_PROJECTS])
+
+
+def forget_recent_project(path):
+    key = os.path.normcase(os.path.abspath(path))
+    _write_recent_projects([item for item in recent_projects()
+                            if os.path.normcase(os.path.abspath(item)) != key])
+
+
+def clear_recent_projects():
+    store = settings()
+    store.remove("projects/recent")
+    store.sync()
 
 
 def default_configuration():

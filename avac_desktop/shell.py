@@ -376,6 +376,12 @@ class MainWindow(QMainWindow):
                 action.setShortcut(QKeySequence(shortcut))
             action.triggered.connect(callback)
             menu.addAction(tr(action))
+            if callback == self.open_project:
+                self.recent_menu = menu.addMenu(tr("Open recent"))
+                self._recent_menu_action = self.recent_menu.menuAction()
+                self.recent_menu.setToolTipsVisible(True)
+                self.recent_menu.aboutToShow.connect(self._refresh_recent_projects)
+                self._refresh_recent_projects()
         self.edit_menu = self.main_menu.addMenu(tr("Edit"))
         self.edit_menu.addAction(tr("Settings…"), self.edit_settings)
         self.extensions_menu = self.main_menu.addMenu(tr("Extensions"))
@@ -399,6 +405,49 @@ class MainWindow(QMainWindow):
         # PySide 6.8 can invalidate a menu when an ephemeral menuAction wrapper
         # is collected after QAction.menu(); retain those wrappers explicitly.
         self._menu_actions = self.main_menu.actions()
+
+    def _refresh_recent_projects(self):
+        from .preferences import recent_projects
+        self.recent_menu.clear()
+        paths = recent_projects()
+        if not paths:
+            self.recent_menu.addAction(tr("No recent projects")).setEnabled(False)
+        for index, path in enumerate(paths, 1):
+            text = self.recent_menu.fontMetrics().elidedText(str(path), Qt.ElideMiddle, 600)
+            action = self.recent_menu.addAction(f"{index}  {text.replace('&', '&&')}")
+            action.setData(str(path))
+            action.setToolTip(str(path))
+            action.setStatusTip(str(path))
+            action.triggered.connect(lambda checked=False, p=path: self._open_recent_project(p))
+        self.recent_menu.addSeparator()
+        clear = self.recent_menu.addAction(tr("Clear list"), self._clear_recent_projects)
+        clear.setEnabled(bool(paths))
+
+    def _remember_project(self, path):
+        from .preferences import remember_project
+        remember_project(path)
+        self._refresh_recent_projects()
+
+    def _clear_recent_projects(self):
+        from .preferences import clear_recent_projects
+        clear_recent_projects()
+        self._refresh_recent_projects()
+
+    def _open_recent_project(self, path):
+        if not self._can_replace():
+            return
+        try:
+            available = path.is_file()
+        except OSError as exc:
+            self._error(str(exc))
+            return
+        if not available:
+            from .preferences import forget_recent_project
+            forget_recent_project(path)
+            self._refresh_recent_projects()
+            self._error(trf("This project is no longer available: {0}", path))
+            return
+        self.open_project_path(path)
 
     def set_mode(self, mode: str):
         changed = self.session.mode != mode
@@ -1678,6 +1727,7 @@ class MainWindow(QMainWindow):
             previous_workspace = self.session.workspace
             previous_results = self.session.selected_run, self.session.selected_wave
             save_project(self.session, path)
+            self._remember_project(self.session.project_path)
             self._busy(False)
             self._update_project()
             self._refresh_sampling_selectors()
@@ -1711,13 +1761,15 @@ class MainWindow(QMainWindow):
             self._adopt(ProjectSession(configuration=default_configuration(), wave_setup=default_wave_setup()))
 
     def open_project(self):
-        if not self._can_replace() or not self._confirm_unsaved():
+        if not self._can_replace():
             return
         filename, _ = QFileDialog.getOpenFileName(self, tr("Open AVAC project"), "", tr("AVAC project (*.avacproj)"))
         if filename:
             self.open_project_path(Path(filename))
 
     def open_project_path(self, path: Path):
+        if not self._can_replace() or not self._confirm_unsaved():
+            return
         try:
             session, dem, provenance = load_project(path)
             self._adopt(session)
@@ -1744,6 +1796,7 @@ class MainWindow(QMainWindow):
                 self._load_results(session.analysis_kind, session.selected_wave, restore_selection=True)
             elif session.selected_run:
                 self.load_run(session.selected_run, restore_selection=True)
+            self._remember_project(session.project_path)
         except (ValueError, OSError, KeyError, TypeError) as exc:
             self._error(str(exc))
 
