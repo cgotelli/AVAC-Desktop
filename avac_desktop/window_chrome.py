@@ -1,4 +1,5 @@
 """Themed window controls with native Windows move, snap and edge resizing."""
+from .i18n import tr, trf, tr_list, number, parse_number
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton
 
@@ -13,17 +14,17 @@ class TitleBar(QFrame):
         self.logo = QLabel()
         self.logo.setPixmap(window.windowIcon().pixmap(22, 22))
         layout.addWidget(self.logo)
-        self.title = QLabel(window.windowTitle())
+        self.title = QLabel(tr(window.windowTitle()))
         self.title.setAttribute(Qt.WA_TransparentForMouseEvents)
         layout.addWidget(self.title)
         layout.addStretch()
         for text, hint, callback in (("−", "Minimize", window.showMinimized),
                                      ("□", "Maximize / restore", self.toggle_maximized),
                                      ("×", "Close", window.close)):
-            button = QPushButton(text)
+            button = QPushButton(tr(text))
             button.setObjectName("CloseWindow" if hint == "Close" else "WindowControl")
-            button.setToolTip(hint)
-            button.setAccessibleName(hint)
+            button.setToolTip(tr(hint))
+            button.setAccessibleName(tr(hint))
             button.setFixedSize(46, 34)
             button.clicked.connect(callback)
             layout.addWidget(button)
@@ -35,9 +36,9 @@ class TitleBar(QFrame):
     def eventFilter(self, obj, event):
         if obj is self.window and event.type() == QEvent.WindowStateChange:
             maximized = self.window.isMaximized()
-            self.maximize_button.setText("❐" if maximized else "□")
-            self.maximize_button.setToolTip("Restore" if maximized else "Maximize")
-            self.maximize_button.setAccessibleName("Restore" if maximized else "Maximize")
+            self.maximize_button.setText(tr("❐" if maximized else "□"))
+            self.maximize_button.setToolTip(tr("Restore" if maximized else "Maximize"))
+            self.maximize_button.setAccessibleName(tr("Restore" if maximized else "Maximize"))
         return super().eventFilter(obj, event)
 
     def toggle_maximized(self):

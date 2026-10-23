@@ -10,6 +10,7 @@ import yaml
 
 from avac_desktop.core.run_diagnostics import solver_failure_reason, write_volume_balance
 from avac_desktop.core.run_project import read_run_metadata, update_run_status
+from . import __version__
 
 
 class NativeJob(QObject):
@@ -78,9 +79,10 @@ class NativeJob(QObject):
         self.process.setArguments([])
         self.log_file = (root/"desktop_solver.log").open("a", encoding="utf-8")
         self.started_at = time.monotonic()
-        self._update_status("running", omp_threads=threads)
+        self._update_status("running", omp_threads=threads, desktop_version=__version__)
         self._state("running")
-        self.log.emit(f"Starting {solver}\nOMP_NUM_THREADS={threads}\nRun: {root}\n")
+        self._record(f"AVAC Desktop {__version__}\nStarting {kind}: {solver}\n"
+                     f"Native runtime: {runtime}\nOMP_NUM_THREADS={threads}\nRun: {root}\n")
         self.process.start()
         self.timer.start()
 

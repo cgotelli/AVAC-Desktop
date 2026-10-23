@@ -27,12 +27,14 @@ subroutine setprob
     use hydraulic_bc_module, only: setup_hydraulic_bc
     use geoclaw_module, only: conserve_depth_amr, refinement_energy_depth
     use geoclaw_module, only: use_fwave_positivity_limiter
-    use amr_module, only: nghost
+    use amr_module, only: nghost, avac_regrid_seconds
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
 
     implicit none
 
     character*12 fname, free_surface
-    integer iunit, k
+    integer iunit, k, amr_unit, amr_status
+    logical :: amr_exists
     !double precision :: rho, C, u_cr
     double precision :: rho, u_cr, velocity_depth_threshold
     double precision :: state_momentum_regularization_depth
@@ -46,6 +48,18 @@ subroutine setprob
     !
     !     # read data values for this problem
     !
+    avac_regrid_seconds = 0.d0
+    inquire(file='avac_amr.data', exist=amr_exists)
+    if (amr_exists) then
+        amr_unit = 79
+        call opendatafile(amr_unit, 'avac_amr.data')
+        read(amr_unit,*,iostat=amr_status) avac_regrid_seconds
+        close(amr_unit)
+        if (amr_status /= 0) error stop 'Invalid AVAC AMR interval'
+        if (.not. ieee_is_finite(avac_regrid_seconds) .or. avac_regrid_seconds <= 0.d0) &
+            error stop 'AVAC AMR interval must be positive and finite'
+        write(*,*) 'AVAC AMR update interval [s]: ', avac_regrid_seconds
+    endif
     iunit = 7
     fname = 'setprob.data'
     !     # open the unit with new routine from Clawpack 4.4 to skip over

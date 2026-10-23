@@ -24,8 +24,10 @@ from avac_desktop.core.runtime import runtime_manifest_sha256
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--toolchain",type=Path,required=True)
-    parser.add_argument("--version",default="0.1.5")
+    parser.add_argument("--toolchain",type=Path,required=True, help="Solver compiler bin directory")
+    parser.add_argument("--libraries",type=Path,default=ROOT/"build/windows-runtime-libraries",
+                        help="Reviewed DLLs staged by fetch_windows_runtime.py")
+    parser.add_argument("--version",default="0.1.6-dev4")
     args = parser.parse_args()
     output = ROOT/"avac_desktop"/"resources"
     output.mkdir(parents=True,exist_ok=True)
@@ -65,7 +67,7 @@ def main():
                    "--clawpack",str(compact),"--runtime-version",args.version,
                    "--output",str(archive),"--license",str(ROOT/"native"/"clawpack-v5.14.0"/"LICENSE")]
         for library in libraries:
-            command.extend(["--library",str(args.toolchain.resolve()/library)])
+            command.extend(["--library",str(args.libraries.resolve()/library)])
         subprocess.run(command,cwd=ROOT,check=True)
         with tarfile.open(archive,"r:gz") as bundle:
             manifest = json.loads(bundle.extractfile("windows-amd64/runtime-manifest.json").read())
@@ -78,7 +80,8 @@ def main():
                           source_repository="https://github.com/cgotelli/AVAC-Desktop",
                           source_tree_sha256=source_hash.hexdigest(),
                           python_layout="compact-clawpack-packages-v1",
-                          build_toolchain="WinLibs GCC 13.2.0 / MinGW-w64 11.0.1 UCRT POSIX SEH r8")
+                          build_toolchain="WinLibs GCC 13.2.0 / MinGW-w64 11.0.1 UCRT POSIX SEH r8",
+                          runtime_libraries="MSYS2 UCRT GCC 16.2.0-6 with libgfortran locale fix; winpthreads 14.0.0.r495.g63ebe6cdb-2; dlfcn-win32 1.4.1")
         (output/f"{kind.lower()}-runtime.json").write_text(json.dumps(descriptor,indent=2)+"\n",encoding="utf-8")
         records[kind] = dict(descriptor=descriptor,solver_sha256=manifest["solver"]["sha256"])
     (ROOT/"build"/"native-runtimes.json").write_text(json.dumps(records,indent=2)+"\n",encoding="utf-8")

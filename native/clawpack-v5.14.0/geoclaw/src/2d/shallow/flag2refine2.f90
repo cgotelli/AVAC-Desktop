@@ -150,7 +150,7 @@ subroutine flag2refine2(mx,my,mbc,mbuff,meqn,maux,xlower,ylower,dx,dy,t,level, &
                 
                     ! Check wave criteria
                     eta = q(1,i,j) + aux(1,i,j)
-                    if (abs(eta - sea_level) > wave_tolerance) then
+                    if (.not. conserve_depth_amr .and. abs(eta - sea_level) > wave_tolerance) then
                         amrflags(i,j) = DOFLAG
                         cycle x_loop
                     endif

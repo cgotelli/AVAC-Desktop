@@ -27,7 +27,11 @@ See [native source notes](native/README.md).
 
 ## Windows native runtime libraries
 
-Runtime packaging uses WinLibs GCC 13.2.0 / MinGW-w64 11.0.1 UCRT POSIX SEH r8.
+Solvers are compiled with WinLibs GCC 13.2.0 / MinGW-w64 11.0.1 UCRT POSIX SEH r8.
+Runtime packaging uses the compatible MSYS2 UCRT GCC 16.2.0-6 libraries and
+winpthreads 14.0.0.r495.g63ebe6cdb-2, retaining WinLibs dlfcn-win32 1.4.1.
+MSYS2 includes both libgfortran locale fixes for GCC PR121759; this prevents
+decimal-comma Windows settings from corrupting numbers after binary I/O.
 The exact unmodified DLL hashes, source links, recipe revision and notice-file
 hashes are recorded in `tools/windows_runtime_licenses/manifest.json`.
 
@@ -38,6 +42,11 @@ hashes are recorded in `tools/windows_runtime_licenses/manifest.json`.
 - MinGW-w64/winpthreads: `mingw-w64-COPYING` and `winpthreads-COPYING`.
 - dlfcn-win32 1.4.1 (`libdl.dll`): `dlfcn-win32-COPYING` and the corresponding
   unmodified `dlfcn-win32-dlfcn.c`.
+
+MSYS2 license texts are retained with the `msys2-` prefix. Its exact source
+packages, including GCC source and the locale patches/build recipes, are
+included in the offline source distribution. Package download URLs and
+hashes are also pinned in the native license manifest.
 
 These texts are retained under `tools/windows_runtime_licenses/` and copied
 into each built native runtime. The DLL binaries themselves are not tracked.
@@ -68,3 +77,5 @@ bundles `topo_cut_dam_1m.tif` and `avalanches.geojson` for offline tutorial use;
 SHA-256 identities are recorded in `tools/fetch_tutorial.py` and the installation
 inventory. Those datasets are not tracked in this source repository. Online map backgrounds
 carry their provider attribution in the application and are not bundled.
+
+Local Desktop AMR changes add physical-time regridding, motion buffers and fixed 1:2 AVAC refinement ratios; WAVE uses a uniform mesh. See docs/ARCHITECTURE.md.

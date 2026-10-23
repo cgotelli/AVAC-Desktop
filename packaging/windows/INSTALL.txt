@@ -1,4 +1,14 @@
-AVAC Desktop 0.1.5 preview - Windows offline installer
+AVAC Desktop 0.1.7 preview 1 - Windows offline installer
+
+LANGUAGE AND NUMBERS
+Setup offers English (default), French, Spanish, Italian and German.
+The selected language is used for licensing information and the scientific-use
+notice, followed by the full official English AGPL. The translated information
+is a summary, not a replacement license. No extra license restrictions apply.
+On a first installation, Setup's choice initializes the app language; upgrades
+preserve existing app preferences. In Edit > Settings, select Language and Save,
+then restart the app. Decimal separator (point or comma) is independent, changes
+immediately after Save, and is remembered. Scientific files retain their formats.
 
 REQUIREMENTS
 Windows 11 x64, Intel or AMD processor. Windows 10, ARM and 32-bit Windows
@@ -18,13 +28,13 @@ not an external Intel MKL/MPI installation. Core operation is offline.
 Internet access is only needed for optional online background maps.
 
 INSTALL
-Copy AVACDesktop-0.1.5-preview.1-Setup-x64.exe to the other computer and run it.
+Copy AVACDesktop-0.1.7-preview.1-Setup-x64.exe to the other computer and run it.
 Review the scientific-use notice and license, keep the default options and
 installation folder, then choose Install. Start AVAC Desktop from the Start
 menu or desktop shortcut. Install for each Windows user who needs the software.
 The default folder is %LOCALAPPDATA%\Programs\AVAC Desktop.
 
-This first test installer is unsigned. Windows may identify its publisher as
+This preview installer is unsigned. Windows may identify its publisher as
 unknown. Obtain it from the project owner and verify its SHA-256 against the
 supplied checksum before deciding to proceed. No security setting needs to be
 disabled. Public signing/Store delivery remains a separate release step.

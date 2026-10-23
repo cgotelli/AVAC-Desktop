@@ -1,12 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_submodules
 from pathlib import Path
+from PySide6.QtCore import QLibraryInfo
 import sys
 import json
 import runpy
 
 hiddenimports = []
 hiddenimports += collect_submodules('osgeo')
+translations = [(str(Path(QLibraryInfo.path(QLibraryInfo.TranslationsPath))/f'qtbase_{code}.qm'),
+                 'avac_desktop/resources/translations') for code in ('fr', 'es', 'it', 'de')]
 runtime_data = []
 tutorial = runpy.run_path(str(Path(SPECPATH)/'tools/fetch_tutorial.py'))
 tutorial_data = [(str(path), 'tutorial') for path in tutorial['verify_tutorial'](Path(SPECPATH)/'tutorial')]
@@ -24,8 +27,10 @@ a = Analysis(
     datas=[('avac_desktop/resources/AVAC_configuration100.yaml', 'avac_desktop/resources'),
            ('avac_desktop/resources/AVAC_app_icon.png', 'avac_desktop/resources'),
            ('avac_desktop/resources/spin-*.svg', 'avac_desktop/resources'),
+           ('avac_desktop/resources/translations/*.json', 'avac_desktop/resources/translations'),
+           ('avac_desktop/resources/legal/*.txt', 'avac_desktop/resources/legal'),
            (str(Path(sys.prefix)/'Library/share/proj'), 'Library/share/proj'), ('LICENSE', '.'),
-           ('DISCLAIMER.txt', '.'), ('THIRD_PARTY_NOTICES.md', '.')]+runtime_data+tutorial_data,
+           ('DISCLAIMER.txt', '.'), ('THIRD_PARTY_NOTICES.md', '.')]+runtime_data+tutorial_data+translations,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={'matplotlib': {'backends': ['Agg']}},

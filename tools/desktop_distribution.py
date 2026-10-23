@@ -128,9 +128,11 @@ def prepare_legal():
     downloads.extend([
         ("pyside-setup", "https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.8.3-src/pyside-setup-everywhere-src-6.8.3.tar.xz", "d2c896f7f1a6a7ea4c9f98cfe317272fd139703ddf612b86999f09e48aeef0e6"),
         ("ffmpeg", "https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz", None),
-        ("gcc-runtime", "https://gcc.gnu.org/pub/gcc/releases/gcc-13.2.0/gcc-13.2.0.tar.xz", None),
         ("mingw-w64", "https://codeload.github.com/mingw-w64/mingw-w64/tar.gz/refs/tags/v11.0.1", None),
     ])
+    native_notices = json.loads((ROOT/"tools/windows_runtime_licenses/manifest.json").read_text())
+    for component in ("msys2_gcc", "msys2_winpthreads"):
+        downloads.append((component, native_notices["source_access"][component], None))
     records = []
     def download(item):
         name, url, expected = item
@@ -223,7 +225,7 @@ def installer_files():
     for name in ("INSTALL.txt", "LICENSE", "DISCLAIMER.txt", "THIRD_PARTY_NOTICES.md"):
         path = STAGE/name
         rows[name] = dict(path=name, bytes=path.stat().st_size, sha256=sha(path))
-    write_json(STAGE/"INSTALLATION_FILES.json", dict(format=1, version="0.1.5-preview.1", files=list(rows.values())))
+    write_json(STAGE/"INSTALLATION_FILES.json", dict(format=1, version="0.1.7-preview.1", files=list(rows.values())))
     paths = [Path(name) for name in rows]+[Path("INSTALLATION_FILES.json")]
     directories = set()
     for path in paths:

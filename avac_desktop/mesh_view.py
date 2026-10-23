@@ -54,8 +54,6 @@ class MeshItem(QGraphicsItem):
         for i in selected[np.argsort(p[selected, 6], kind='stable')]:
             left, top, right, bottom = b[i]
             _, _, nx, ny, dx, dy, level = p[i]
-            outlines, lines = groups.setdefault(int(level), ([], []))
-            outlines.append(QRectF(left, top, right-left, bottom-top))
             if dx*sx < self.CELL_PIXELS or dy*sy < self.CELL_PIXELS:
                 continue
             x0 = max(1, math.ceil((exposed.left()-left)/dx))
@@ -65,6 +63,8 @@ class MeshItem(QGraphicsItem):
             count = max(0, x1-x0+1)+max(0, y1-y0+1)
             if count > remaining:
                 continue
+            outlines, lines = groups.setdefault(int(level), ([], []))
+            outlines.append(QRectF(left, top, right-left, bottom-top))
             lines.extend(QLineF(left+j*dx, max(top, exposed.top()), left+j*dx, min(bottom, exposed.bottom()))
                          for j in range(x0, x1+1))
             lines.extend(QLineF(max(left, exposed.left()), top+j*dy, min(right, exposed.right()), top+j*dy)

@@ -35,6 +35,15 @@ with open(current_dir / "AVAC_configuration.yaml") as file:
 topo_dir    = proj_dir / "Topo"
 
 
+levels = int(Param['refinement'])
+if not 1 <= levels <= 8:
+    raise ValueError('AVAC levels must be between 1 and 8')
+finest_cell = float(Param['cell_size'])
+if Param.get('cell_size_reference', 'base') == 'base':
+    finest_cell /= 1 if levels == 1 else 2 * 4**(levels-2)
+base_cell = finest_cell * 2**(levels-1)
+
+
 def _whole_cell_count(lower, upper, cell_size, axis):
     """Return an exact positive grid-cell count without truncating roundoff.
 
@@ -119,8 +128,8 @@ def setrun(claw_pkg='geoclaw'):
 
         clawdata.lower[1] = DEM['ymin']
         clawdata.upper[1] = DEM['ymax']
-        nx = _whole_cell_count(DEM['xmin'], DEM['xmax'], Param['cell_size'], 'x')
-        ny = _whole_cell_count(DEM['ymin'], DEM['ymax'], Param['cell_size'], 'y')
+        nx = _whole_cell_count(DEM['xmin'], DEM['xmax'], base_cell, 'x')
+        ny = _whole_cell_count(DEM['ymin'], DEM['ymax'], base_cell, 'y')
         # Number of grid cells: Coarsest grid
         clawdata.num_cells[0] = nx
         clawdata.num_cells[1] = ny
@@ -392,9 +401,9 @@ def setrun(claw_pkg='geoclaw'):
     amrdata.amr_levels_max = Param['refinement']
 
     # List of refinement ratios at each level (length at least mxnest-1)
-    amrdata.refinement_ratios_x = [2,4,4]
-    amrdata.refinement_ratios_y = [2,4,4]
-    amrdata.refinement_ratios_t = [2,4,4]
+    amrdata.refinement_ratios_x = [2] * max(1, levels-1)
+    amrdata.refinement_ratios_y = [2] * max(1, levels-1)
+    amrdata.refinement_ratios_t = [2] * max(1, levels-1)
 
     # Specify type of each aux variable in amrdata.auxtype.
     # This must be a list of length maux, each element of which is one of:
@@ -406,7 +415,9 @@ def setrun(claw_pkg='geoclaw'):
     amrdata.flag2refine     = True
 
     # steps to take on each level L between regriddings of level L+1:
-    amrdata.regrid_interval = 3
+    amrdata.regrid_interval = 3  # legacy fallback; AVAC uses simulated seconds
+    desktop_amr = rundata.new_UserData(name='desktop_amr', fname='avac_amr.data')
+    desktop_amr.add_param('regrid_seconds', float(Param.get('regrid_seconds', 5.0)))
 
     # width of buffer zone around flagged points:
     # (typically the same as regrid_interval so waves don't escape):
@@ -485,7 +496,7 @@ def setrun(claw_pkg='geoclaw'):
         dx_fine = float(ResultGrid['cell_size'])
         dy_fine = dx_fine
     elif topo_source == 'real_world':
-        dx_fine = Param['cell_size']
+        dx_fine = finest_cell
         dy_fine = dx_fine
     else:
         dx_fine = Param['dx']  # grid resolution at finest level
@@ -587,8 +598,8 @@ def setrun(claw_pkg='geoclaw'):
         fgout.y1 = float(ResultGrid['yllcenter']) - dy_fine / 2.0
         fgout.y2 = fgout.y1 + fgout.ny * dy_fine
     elif topo_source == 'real_world':
-        fgout.nx = _whole_cell_count(DEM['xmin'], DEM['xmax'], Param['cell_size'], 'x')
-        fgout.ny = _whole_cell_count(DEM['ymin'], DEM['ymax'], Param['cell_size'], 'y')
+        fgout.nx = _whole_cell_count(DEM['xmin'], DEM['xmax'], finest_cell, 'x')
+        fgout.ny = _whole_cell_count(DEM['ymin'], DEM['ymax'], finest_cell, 'y')
         fgout.x1 = DEM['xmin']
         fgout.x2 = DEM['xmax']
         fgout.y1 = DEM['ymin']
@@ -764,7 +775,7 @@ def setgeo(rundata):
     refinement_data.speed_tolerance = [0.05] * max(1, int(Param['refinement']) - 1)
     refinement_data.deep_depth     = 1e2
     refinement_data.max_level_deep = 3
-    refinement_data.variable_dt_refinement_ratios = True
+    refinement_data.variable_dt_refinement_ratios = False
 
     # == settopo.data values ==
     topo_data = rundata.topo_data

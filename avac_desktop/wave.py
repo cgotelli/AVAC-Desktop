@@ -8,6 +8,7 @@ import uuid
 import numpy as np
 
 from avac_desktop.core.lake_polygon import connected_lake_mask, seed_cell, write_lake_polygon
+from avac_desktop.core.configuration import mesh_sizes
 from avac_desktop.core.preprocessing import AvacRaster, configuration_for_raster
 from avac_desktop.core.wave_project import avac_computation_domain, prepare_wave_lake, prepare_wave_scenario
 from avac_desktop.core.wave_execution import prepare_wave_runtime_execution
@@ -69,6 +70,7 @@ def preview_lake(session):
 
 def inherited_settings(session):
     setup = dict(session.wave_setup)
+    setup["cell_size"] = mesh_sizes(session.configuration)[0]
     if setup.get("duration") is None:
         setup["duration"] = float(session.configuration["computation"]["t_max"])
     for key in ("cfl_target", "cfl_max"):
@@ -89,7 +91,7 @@ def prepare(session):
     output_count(float(setup["duration"]), interval)
     settings = {key: value for key, value in setup.items() if key not in ("duration", "water_level", "cell_size")}
     root = prepare_wave_scenario(session.workspace, session.selected_run, session.terrain.raster, rings,
-                                 water_level=float(session.wave_setup["water_level"]), cell_size=float(session.wave_setup["cell_size"]),
+                                 water_level=float(session.wave_setup["water_level"]), cell_size=float(setup["cell_size"]),
                                  domain=avac_computation_domain(session.selected_run), parameters=settings, prepared_lake=lake,
                                  duration=float(setup["duration"]), output_interval=interval)
     try:

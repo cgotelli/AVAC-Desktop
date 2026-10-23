@@ -5,6 +5,23 @@ and **Analyze** for exploring its results. **Edit > Settings** changes defaults
 for future projects and switches between light and dark appearance. Each saved
 project retains its own configuration.
 
+**Edit > Settings > Language** selects English, French, Spanish, Italian or
+German. English is the initial default. Select **Save** and restart the app to
+apply a new language. **Decimal separator** independently selects a point or
+comma and applies immediately after Save. Both choices are remembered for
+future sessions and do not depend on the Windows regional settings.
+Numeric input does not use thousands separators. Scientific YAML, solver
+inputs, project files and CSV exports retain their existing machine-readable
+formats. Native solver output and detailed backend diagnostics retain their
+original English text.
+
+The offline installer also offers all five languages. Its explicit language
+choice initializes a first installation; upgrading preserves an existing app
+language preference. The license information and scientific-use notice appear
+in the chosen language, followed by the complete official English AGPL text.
+The translated information is a summary, not a replacement license. These
+notices are also available from **Help > License and scientific-use notice**.
+
 ## Tutorial
 
 Choose **Help > Load tutorial** to load the included Alpine terrain and snow
@@ -66,17 +83,24 @@ The application asks the native AVAC solver to initialize its grids in a
 temporary directory, stops before any time steps, and displays the actual
 patches. Check that the finer patches cover the snow releases. Each level has
 a different colour. The map shows only mesh lines, without a mesh annotation.
-With one AMR level selected,
-the mesh is uniform. Increase the refinement level under Numerics if needed.
+With one AMR level selected, the mesh is uniform. Under Numerics, choose the
+smallest cell size, the number of AVAC AMR levels and the update interval in
+simulated seconds (default: 5 s). Adjacent levels always have a 1:2 ratio; WAVE
+uses a uniform mesh at the smallest requested size. A very long update interval
+can enlarge the safety buffer and increase cost. Mesh spacing need not be an
+exact multiple of DEM resolution; whole base cells are fitted inside the DEM,
+cropping less than one base cell of total border width per axis.
 
 Snow starts at rest, so initial AVAC refinement explicitly flags release cells
 with depth above the dry tolerance through the requested AMR levels. Normal
 speed/energy criteria control refinement after initialization. This corrects
 the previous behaviour where refinement first appeared after the snow moved;
-new AMR runs may therefore differ from earlier runs. WAVE refinement is unchanged.
+new AMR runs may therefore differ from earlier runs. Old mesh configurations
+are migrated on loading to preserve their previous finest cell size; existing
+results retain their recorded grids. WAVE always uses one uniform level.
 
-Patch boundaries remain visible at normal zoom; cell lines appear when large
-enough on screen. Drawing is clipped and bounded. The initial geometry is
+Mesh lines appear only when cells are large enough on screen. Zooming out hides
+both cell lines and patch boundaries. Drawing is clipped and bounded. The initial geometry is
 cached at `runs/<run>/AVAC/initial_mesh.txt`. Changing scientific inputs hides
 the stale snapshot until preparation is repeated. The inspection is optional,
 does not start or complete a simulation, and never writes to its result folder.

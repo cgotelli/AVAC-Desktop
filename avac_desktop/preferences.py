@@ -2,7 +2,7 @@
 from copy import deepcopy
 import yaml
 from PySide6.QtCore import QSettings
-from avac_desktop.core.configuration import controlled_values, load_complete_configuration, validate_controlled_values
+from avac_desktop.core.configuration import controlled_values, normalize_mesh_configuration, load_complete_configuration, validate_controlled_values
 from avac_desktop.core.runtime_assets import default_template_path
 
 
@@ -14,7 +14,7 @@ def default_configuration():
     saved = settings().value("defaults/avac_yaml", "")
     if saved:
         try:
-            config = yaml.safe_load(saved)
+            config = normalize_mesh_configuration(yaml.safe_load(saved))
             if not validate_controlled_values(controlled_values(config)):
                 return deepcopy(config)
         except (ValueError, TypeError, KeyError, yaml.YAMLError):

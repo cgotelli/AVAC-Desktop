@@ -172,6 +172,8 @@ module amr_module
     integer, parameter :: iinfinity = 999999999
     integer, parameter :: horizontal = 1
     integer, parameter :: vertical = 2
+    ! Zero retains the upstream step-count scheduler (WAVE and legacy runs).
+    real(kind=8) :: avac_regrid_seconds = 0.d0
     integer, parameter :: maxlv = 10
 
     !> maximum number of clusters (grids) on each grid level

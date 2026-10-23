@@ -18,7 +18,7 @@ PARAMETER_PATHS = (
     "release.correction_slope", "release.correction_elevation",
     "rheology.model", "rheology.mu", "rheology.xi", "rheology.C", "rheology.rho", "rheology.u_cr", "rheology.beta",
     "computation.t_max", "computation.nb_simul", "computation.cfl_target", "computation.cfl_max",
-    "computation.refinement", "computation.cell_size", "computation.boundary", "computation.limiter",
+    "computation.refinement", "computation.cell_size", "computation.regrid_seconds", "computation.boundary", "computation.limiter",
     "computation.state_momentum_regularization_depth",
     "computation.voellmy_state_momentum_regularization_depth",
     "output.output_format", "output.delta_t", "output.verbosity",
@@ -29,6 +29,7 @@ PARAMETER_PATHS = (
 # an older saved case must not fail merely because these explicit numerical
 # controls were previously implicit solver defaults.
 OPTIONAL_CONTROL_DEFAULTS: dict[str, Any] = {
+    "computation.regrid_seconds": 5.0,
     "computation.state_momentum_regularization_depth": 0.05,
     "computation.voellmy_state_momentum_regularization_depth": 0.10,
 }
@@ -115,6 +116,32 @@ def validate_release_depth_parameters(release: Mapping[str, Any]) -> list[str]:
     return issues
 
 
+def normalize_mesh_configuration(payload: dict[str, Any]) -> dict[str, Any]:
+    """Migrate the old base-size control while preserving its finest spacing."""
+    result = deepcopy(payload)
+    if not result:
+        return result
+    computation = result["computation"]
+    reference = computation.get("cell_size_reference", "base")
+    if reference == "base":
+        levels = int(computation["refinement"])
+        ratio = 1 if levels <= 1 else 2 * 4**(levels-2)
+        computation["cell_size"] = float(computation["cell_size"]) / ratio
+    elif reference != "finest":
+        raise ValueError("Unknown mesh cell-size reference.")
+    computation["cell_size_reference"] = "finest"
+    computation.setdefault("regrid_seconds", 5.0)
+    return result
+
+
+def mesh_sizes(configuration: dict[str, Any]) -> tuple[float, float, int]:
+    computation = normalize_mesh_configuration(configuration)["computation"]
+    finest, levels = float(computation["cell_size"]), int(computation["refinement"])
+    if not np.isfinite(finest) or finest <= 0 or not 1 <= levels <= 8:
+        raise ValueError("Choose a positive smallest cell size and between 1 and 8 AVAC levels.")
+    return finest, finest * 2**(levels-1), levels
+
+
 def load_complete_configuration(path: str | Path) -> dict[str, Any]:
     """Load a complete AVAC schema without dropping unknown advanced values."""
     path = Path(path)
@@ -128,7 +155,7 @@ def load_complete_configuration(path: str | Path) -> dict[str, Any]:
     missing = [section for section in REQUIRED_SECTIONS if not isinstance(payload.get(section), dict)]
     if missing:
         raise ValueError("Configuration is not a complete AVAC schema; missing mappings: " + ", ".join(missing))
-    return payload
+    return normalize_mesh_configuration(payload)
 
 
 def value_at(payload: dict[str, Any], path: str) -> Any:
@@ -210,6 +237,12 @@ def validate_controlled_values(values: dict[str, Any]) -> list[str]:
             issues.append("Simulation end time must be positive.")
         if float(values["computation.cell_size"]) <= 0:
             issues.append("Computational cell size must be positive.")
+        levels = float(values["computation.refinement"])
+        if not levels.is_integer() or not 1 <= levels <= 8:
+            issues.append("AVAC AMR levels must be an integer from 1 to 8.")
+        interval = float(values.get("computation.regrid_seconds", 5.0))
+        if not np.isfinite(interval) or interval <= 0:
+            issues.append("AMR update interval must be positive and finite.")
         state_depth = float(values["computation.state_momentum_regularization_depth"])
         if not np.isfinite(state_depth) or state_depth < 0:
             issues.append(
@@ -252,19 +285,16 @@ def validate_controlled_values(values: dict[str, Any]) -> list[str]:
 def validate_grid_contract(configuration: dict[str, Any], source_cell_size: float | None = None) -> list[str]:
     """Validate AVAC's independent terrain and computational-grid contract.
 
-    ``dem_extent`` and ``computation.cell_size`` define the Clawpack domain;
-    the selected source DEM is only the terrain sampling grid.  AVAC's
-    real-world setup supports equal or finer terrain sampling, with an integer
-    ratio, but not silently coarser terrain or fractional regridding. The
-    minimum domain dimensions also reflect the two-cell Water and five-cell
-    granular ghost stencils.
+    The user specifies the finest spacing. The base spacing is larger by
+    2**(levels-1); its rectangle must contain whole cells and enough cells
+    for the solver's ghost stencil. DEM spacing is independent.
     """
     issues: list[str] = []
     try:
         dem, computation = configuration["dem_extent"], configuration["computation"]
         model = str(configuration.get("rheology", {}).get("model", "")).strip()
         minimum_cells = 4 if model == "Water" else 10
-        cell_size = float(computation["cell_size"])
+        _, cell_size, _ = mesh_sizes(configuration)
         if cell_size <= 0:
             return ["Computational cell size must be positive."]
         for axis in ("x", "y"):
@@ -278,16 +308,12 @@ def validate_grid_contract(configuration: dict[str, Any], source_cell_size: floa
             elif int(round(cells)) < minimum_cells:
                 issues.append(
                     f"Computational {axis}-domain needs at least {minimum_cells} cells "
-                    f"for the {model or 'granular'} solver stencil and QGIS raster results."
+                    f"for the {model or 'granular'} solver stencil. Reduce the level count or cell size."
                 )
         if source_cell_size is not None:
             source = float(source_cell_size)
-            ratio = cell_size / source
-            if source <= 0 or ratio < 1 or not np.isclose(ratio, round(ratio), rtol=0.0, atol=1e-8):
-                issues.append(
-                    "Source DEM cell size must equal or evenly subdivide the computational cell size; "
-                    "AVAC does not silently resample terrain during preparation."
-                )
+            if not np.isfinite(source) or source <= 0:
+                issues.append("Source DEM cell size must be positive and finite.")
     except (KeyError, TypeError, ValueError) as exc:
         issues.append(f"Invalid computational-grid configuration: {exc}")
     return issues

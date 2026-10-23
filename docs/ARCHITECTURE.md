@@ -72,11 +72,52 @@ prepared run; changed inputs require preparation again.
 
 At t=0, `flag2refine2.f90` refines wet AVAC release cells through the configured
 levels even though their initial velocity is zero. The branch is guarded by
-`conserve_depth_amr` and leaves WAVE criteria unchanged. After t=0 the existing
+`conserve_depth_amr`. WAVE uses a uniform grid. After t=0 the existing
 speed/energy criteria apply. `mesh_view.py` batches the static initial patches
 into one graphics item, clips against the viewport and bounds cell-line work.
+A patch and all its cell lines are hidden when cells occupy less than seven
+pixels, or its line budget is exhausted; no coarse patch outlines substitute
+for invisible cells.
 The overlay is removed on entering Analyze. Results readers, frame workers
 and video export have no mesh path, mesh time index or mesh cache.
+
+## Mesh controls and physical-time AMR
+
+`computation.cell_size_reference: finest` identifies the current mesh schema.
+`cell_size` is the smallest requested cell width, `refinement` counts levels
+including the base grid, and all spatial/time refinement ratios are two.
+The base width is `cell_size * 2**(refinement - 1)`. Older configurations with
+an absent reference field are migrated from the former base-width convention,
+preserving the finest width implied by their old 2/4/4 ratios. Existing results
+are read as recorded; migration affects new preparation only.
+
+Whole base cells are fitted symmetrically inside the original DEM bounds,
+removing less than one base cell of total border width per axis. The source
+DEM samples and qinit sampling grid remain intact. GeoClaw integrates the
+terrain and initial depths over the independently positioned solver cells;
+DEM resolution need not divide mesh spacing. Fixed result grids use the
+smallest requested spacing. WAVE inherits that spacing with one uniform level;
+fractional terrain overlaps use separable area-weighted integration, while
+fractional lake boundaries use sampled polygon coverage.
+
+`computation.regrid_seconds` defaults to 5 simulated seconds. `avac_amr.data`
+passes it to AVAC. The scheduler lands on these deadlines and rebuilds the
+hierarchy only at synchronized base steps, independently of output times.
+Initial snow is refined at rest; subsequent flags use moving-snow speed and
+resolved kinetic energy. The existing 0.05 m/s threshold suppresses numerical
+noise. Static terrain elevations do not flag snow cells.
+
+Before flagging each level, a buffer is sized from current maximum snow and
+gravity-wave speeds plus a gravity acceleration allowance over the requested
+interval. Long intervals therefore enlarge refined regions and can cost more;
+the interval is not a guarantee of faster execution. Flag-array storage above
+512 MiB is rejected with a request to reduce the interval. Terrain refinement
+caching and conservative depth transfer remain active. A single level disables
+AMR updates. WAVE always has one level.
+
+`NativeJob` writes the desktop version, runtime location, solver and thread
+count into `desktop_solver.log` before starting either solver, and records the
+desktop version in the run marker.
 
 ## Large-grid execution
 
@@ -127,3 +168,25 @@ reviewed compiler DLLs into versioned runtime archives. `AVACDesktop.spec`
 freezes the UI and its dependencies; `packaging/windows/` creates the per-user
 offline installer. License/source collection is part of packaging, not an
 application startup task. See [building](BUILDING.md).
+
+## Interface language and numeric presentation
+
+`i18n.py` loads the selected English-key JSON catalog from
+`resources/translations` at startup. English is the source language and default.
+Call `tr` for display text and `trf` for translated numeric templates; preserve
+placeholder indices and format specifications in translations. Keep storage
+keys, palette IDs, paths, user names and scientific metadata untranslated.
+Qt's own translations handle standard buttons and dialogs; the Windows bundle
+explicitly includes the four matching `qtbase` catalogs from PySide6.
+
+Per-user QSettings store `interface/language` and `interface/decimal_separator`.
+Language changes require restart; decimal presentation uses an independent
+QLocale, with grouping disabled, and refreshes immediately. Numeric table cells
+store floats and use `NumericDelegate`; charts use `NumericAxis`. Do not change
+Python/C process locale or localize numerical serialization. Both numerical
+settings and scientific files remain independent of interface translations.
+
+`resources/legal` contains localized licensing information and the complete
+scientific-use notice. The original English AGPL in `LICENSE` remains governing.
+The installer uses `packaging/windows/languages.nsh` for custom text and embeds
+each notice offline. The source package includes the same catalogs and notices.

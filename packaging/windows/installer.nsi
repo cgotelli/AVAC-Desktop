@@ -1,4 +1,4 @@
-; AVAC Desktop per-user offline installer. No elevation or dependency downloads.
+﻿; AVAC Desktop per-user offline installer. No elevation or dependency downloads.
 Unicode True
 ManifestDPIAware True
 RequestExecutionLevel user
@@ -8,10 +8,10 @@ Name "AVAC Desktop ${AVAC_VERSION}"
 OutFile "${OUTPUT_FILE}"
 InstallDir ""
 BrandingText "AVAC Desktop - free scientific software"
-VIProductVersion "0.1.5.1"
+VIProductVersion "0.1.7.1"
 VIAddVersionKey /LANG=1033 "ProductName" "AVAC Desktop"
 VIAddVersionKey /LANG=1033 "FileDescription" "AVAC Desktop preview offline installer"
-VIAddVersionKey /LANG=1033 "FileVersion" "0.1.5.1"
+VIAddVersionKey /LANG=1033 "FileVersion" "0.1.7.1"
 VIAddVersionKey /LANG=1033 "LegalCopyright" "AVAC Desktop contributors; third-party notices included"
 
 !include MUI2.nsh
@@ -26,16 +26,18 @@ VIAddVersionKey /LANG=1033 "LegalCopyright" "AVAC Desktop contributors; third-pa
 !define MUI_ICON "${__FILEDIR__}\assets\AVACDesktop.ico"
 !define MUI_UNICON "${__FILEDIR__}\assets\AVACDesktop.ico"
 !define MUI_ABORTWARNING
-!define MUI_WELCOMEPAGE_TITLE "Install AVAC Desktop"
-!define MUI_WELCOMEPAGE_TEXT "Avalanche and lake-wave modelling.$\r$\n$\r$\nThis offline installer includes the application, Python, GIS libraries and both native solvers. No Python, QGIS, compiler or administrator account is required.$\r$\n$\r$\nDevelopment preview for Windows 11 x64 (Intel/AMD). Results require independent scientific validation."
+!define MUI_WELCOMEPAGE_TITLE "$(AvacText0)"
+!define MUI_WELCOMEPAGE_TEXT "$(AvacText1)"
 !insertmacro MUI_PAGE_WELCOME
-!define MUI_PAGE_HEADER_TEXT "Scientific-use notice"
-!define MUI_LICENSEPAGE_TEXT_TOP "Read the modelling limitations and warranty/liability notice. This notice does not restrict your free-software rights."
-!define MUI_LICENSEPAGE_BUTTON "Next >"
-!insertmacro MUI_PAGE_LICENSE "${STAGE}\DISCLAIMER.txt"
-!define MUI_PAGE_HEADER_TEXT "Free software license"
-!define MUI_LICENSEPAGE_TEXT_TOP "AVAC Desktop is AGPL-3.0-or-later. Third-party licenses are included. Receiving or running this software does not require accepting additional terms."
-!define MUI_LICENSEPAGE_BUTTON "Next >"
+!define MUI_PAGE_HEADER_TEXT "$(AvacText2)"
+!define MUI_LICENSEPAGE_TEXT_TOP "$(AvacText3)"
+!define MUI_LICENSEPAGE_TEXT_BOTTOM "$(AvacText6)"
+!define MUI_LICENSEPAGE_BUTTON "$(^NextBtn)"
+!insertmacro MUI_PAGE_LICENSE "$(AvacLicenseNotice)"
+!define MUI_PAGE_HEADER_TEXT "$(AvacText4)"
+!define MUI_LICENSEPAGE_TEXT_TOP "$(AvacText5)"
+!define MUI_LICENSEPAGE_TEXT_BOTTOM "$(AvacText6)"
+!define MUI_LICENSEPAGE_BUTTON "$(^NextBtn)"
 !insertmacro MUI_PAGE_LICENSE "${STAGE}\LICENSE"
 !insertmacro MUI_PAGE_COMPONENTS
 !define MUI_PAGE_CUSTOMFUNCTION_LEAVE ValidateDirectory
@@ -49,20 +51,31 @@ VIAddVersionKey /LANG=1033 "LegalCopyright" "AVAC Desktop contributors; third-pa
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "English"
+!insertmacro MUI_LANGUAGE "French"
+!insertmacro MUI_LANGUAGE "Spanish"
+!insertmacro MUI_LANGUAGE "Italian"
+!insertmacro MUI_LANGUAGE "German"
+!include "${__FILEDIR__}\languages.nsh"
+!define MUI_LANGDLL_ALLLANGUAGES
+!define MUI_LANGDLL_WINDOWTITLE "AVAC Desktop — Language"
+!define MUI_LANGDLL_INFO "Choose a language / Choisissez une langue / Elija un idioma / Scegli una lingua / Sprache wählen"
+
 
 Var PreviousDir
 Var RegisteredDir
 Var SetDefaultAssociation
 
 Function .onInit
+  StrCpy $LANGUAGE ${LANG_ENGLISH}
+  !insertmacro MUI_LANGDLL_DISPLAY
   SetShellVarContext current
   ${IfNot} ${IsNativeAMD64}
-    MessageBox MB_OK|MB_ICONSTOP "This installer requires Windows 11 x64 on an Intel/AMD processor. ARM and 32-bit Windows are not supported by this build." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "$(AvacText10)" /SD IDOK
     SetErrorLevel 1633
     Abort
   ${EndIf}
   ${IfNot} ${AtLeastWin11}
-    MessageBox MB_OK|MB_ICONSTOP "This first installer supports Windows 11 (build 22000 or later)." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "$(AvacText11)" /SD IDOK
     SetErrorLevel 1633
     Abort
   ${EndIf}
@@ -70,7 +83,7 @@ Function .onInit
   ${DisableX64FSRedirection}
   IfFileExists "$SYSDIR\mfplat.dll" MediaPresent
     ${EnableX64FSRedirection}
-    MessageBox MB_OK|MB_ICONSTOP "Standard Windows multimedia components are missing. On Windows N, install Microsoft's Media Feature Pack from Windows Optional Features, then run Setup again. No third-party download is required for standard Windows 11 editions." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "$(AvacText12)" /SD IDOK
     SetErrorLevel 1633
     Abort
   MediaPresent:
@@ -97,14 +110,14 @@ Function ValidateDirectory
   ${OrIf} $INSTDIR == "$WINDIR"
   ${OrIf} $INSTDIR == "$PROGRAMFILES64"
   ${OrIf} $INSTDIR == "$TEMP"
-    MessageBox MB_OK|MB_ICONSTOP "Choose a dedicated application subfolder, not a system or personal-data folder." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "$(AvacText13)" /SD IDOK
     SetErrorLevel 1603
     Abort
   ${EndIf}
   IfFileExists "$INSTDIR\*.*" 0 DirectoryOK
   ReadINIStr $0 "$INSTDIR\avac-installation.ini" "AVAC" "Product"
   ${If} $0 != "${PRODUCT_ID}"
-    MessageBox MB_OK|MB_ICONSTOP "The chosen folder contains other files. Choose an empty application folder or the existing AVAC Desktop installation." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "$(AvacText14)" /SD IDOK
     SetErrorLevel 1603
     Abort
   ${EndIf}
@@ -115,7 +128,7 @@ Function CheckPreviousInstallation
   ${If} $PreviousDir != ""
     ReadINIStr $0 "$PreviousDir\avac-installation.ini" "AVAC" "Product"
     ${If} $0 != "${PRODUCT_ID}"
-      MessageBox MB_OK|MB_ICONSTOP "The registered installation marker is missing. The existing folder was left untouched. Uninstall or repair the previous installation first." /SD IDOK
+      MessageBox MB_OK|MB_ICONSTOP "$(AvacText15)" /SD IDOK
       SetErrorLevel 1603
       Abort
     ${EndIf}
@@ -125,7 +138,7 @@ Function CheckPreviousInstallation
     FileClose $0
     ExecWait '$\"$PreviousDir\Uninstall.exe$\" /S _?=$PreviousDir' $0
     ${If} $0 != 0
-      MessageBox MB_OK|MB_ICONSTOP "The previous version could not be removed. Close AVAC Desktop and try again." /SD IDOK
+      MessageBox MB_OK|MB_ICONSTOP "$(AvacText16)" /SD IDOK
       SetErrorLevel 1603
       Abort
     ${EndIf}
@@ -133,13 +146,13 @@ Function CheckPreviousInstallation
     RMDir "$PreviousDir"
     Return
     PreviousInUse:
-    MessageBox MB_OK|MB_ICONSTOP "Close AVAC Desktop before updating it, and check that its program folder is writable." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "$(AvacText17)" /SD IDOK
     SetErrorLevel 1603
     Abort
   ${EndIf}
 FunctionEnd
 
-Section "Application, solvers, licenses and source (required)" MainSection
+Section "$(AvacText7)" MainSection
   SectionIn RO
   Call ValidateDirectory
   Call CheckPreviousInstallation
@@ -164,6 +177,13 @@ Section "Application, solvers, licenses and source (required)" MainSection
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   WriteINIStr "$INSTDIR\avac-installation.ini" "AVAC" "Product" "${PRODUCT_ID}"
   WriteINIStr "$INSTDIR\avac-installation.ini" "AVAC" "Version" "${AVAC_VERSION}"
+  WriteINIStr "$INSTDIR\avac-installation.ini" "AVAC" "InstallerLanguage" "$LANGUAGE"
+  ; The explicit installer choice seeds a first launch. Keep existing app preferences.
+  ClearErrors
+  ReadRegStr $0 HKCU "Software\AVAC\AVAC Desktop\interface" "language"
+  ${If} ${Errors}
+    WriteRegStr HKCU "Software\AVAC\AVAC Desktop\interface" "language" "$(AvacLanguageCode)"
+  ${EndIf}
   WriteRegStr HKCU "${REGKEY}" "DisplayName" "AVAC Desktop (preview)"
   WriteRegStr HKCU "${REGKEY}" "DisplayVersion" "${AVAC_VERSION}"
   WriteRegStr HKCU "${REGKEY}" "InstallLocation" "$INSTDIR"
@@ -179,18 +199,18 @@ Section "Application, solvers, licenses and source (required)" MainSection
   CreateShortcut "$SMPROGRAMS\AVAC Desktop\Source and licenses.lnk" "$INSTDIR\Source"
   Goto InstallDone
   InstallFailed:
-    MessageBox MB_OK|MB_ICONSTOP "Installation could not copy all files. Check available space and folder permissions, then run Setup again." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "$(AvacText18)" /SD IDOK
     SetErrorLevel 1603
     Abort
   InstallDone:
 SectionEnd
 
-Section "Desktop shortcut" DesktopSection
+Section "$(AvacText8)" DesktopSection
   CreateShortcut "$DESKTOP\AVAC Desktop.lnk" "$INSTDIR\AVACDesktop.exe"
   WriteINIStr "$INSTDIR\avac-installation.ini" "AVAC" "DesktopShortcut" "1"
 SectionEnd
 
-Section "Open AVAC project files (.avacproj)" AssociationSection
+Section "$(AvacText9)" AssociationSection
   WriteRegStr HKCU "Software\Classes\${PROGID}" "" "AVAC Desktop project"
   WriteRegStr HKCU "Software\Classes\${PROGID}\DefaultIcon" "" "$INSTDIR\AVACDesktop.exe,0"
   WriteRegStr HKCU "Software\Classes\${PROGID}\shell\open\command" "" '$\"$INSTDIR\AVACDesktop.exe$\" $\"%1$\"'
@@ -204,11 +224,15 @@ Section "Open AVAC project files (.avacproj)" AssociationSection
 SectionEnd
 
 Function un.onInit
+  ReadINIStr $LANGUAGE "$INSTDIR\avac-installation.ini" "AVAC" "InstallerLanguage"
+  ${If} $LANGUAGE == ""
+    StrCpy $LANGUAGE ${LANG_ENGLISH}
+  ${EndIf}
   SetShellVarContext current
   SetRegView 64
   ReadINIStr $0 "$INSTDIR\avac-installation.ini" "AVAC" "Product"
   ${If} $0 != "${PRODUCT_ID}"
-    MessageBox MB_OK|MB_ICONSTOP "AVAC installation marker not found. No files were removed." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "$(AvacText19)" /SD IDOK
     SetErrorLevel 1603
     Abort
   ${EndIf}
@@ -217,7 +241,7 @@ Function un.onInit
   FileClose $0
   Return
   UninstallInUse:
-    MessageBox MB_OK|MB_ICONSTOP "Close AVAC Desktop before uninstalling it." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "$(AvacText20)" /SD IDOK
     SetErrorLevel 1603
     Abort
 FunctionEnd

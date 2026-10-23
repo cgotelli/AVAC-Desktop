@@ -22,20 +22,29 @@ $toolchainBin = 'C:\tools\mingw64\bin'
 $gitShell = 'C:\Program Files\Git\usr\bin\sh.exe'
 $env:PATH = "$toolchainBin;$env:PATH"
 python tools/build_windows_solvers.py --shell $gitShell
+python tools/fetch_windows_runtime.py --toolchain $toolchainBin --zstd 'C:\tools\zstd.exe'
 python tools/build_desktop_runtimes.py --toolchain $toolchainBin
 python -m avac_desktop
 ```
 
 The first command compiles both `native/src/*/xgeoclaw.exe` executables with
-the included common sources. The second writes two `.tar.gz` archives and
+the included common sources. The fetch command stages the reviewed numerical
+DLLs under `build/windows-runtime-libraries`; it needs the `zstd` decompressor
+(also available in conda environments under `Library/bin`). It verifies package
+and DLL hashes before use. The runtime builder writes two `.tar.gz` archives and
 updates `avac_desktop/resources/avac-runtime.json` and `wave-runtime.json`.
 Use a new `--version` when producing a new runtime; existing archives are not
 overwritten. Runtime descriptors must travel with their matching archives.
 The packaged native writers and Clawpack code are loaded from these archives,
 so rebuild them after changing those sources.
 
-`tools/windows_runtime_licenses/manifest.json` pins the exact reviewed compiler
-DLLs and license texts. Packaging rejects different DLL bytes; selecting a
+`tools/windows_runtime_licenses/manifest.json` pins the exact reviewed runtime
+DLLs and license texts. The compiler remains GCC 13.2.0, but distributed GCC
+runtime DLLs come from MSYS2 UCRT 16.2.0-6. This includes the libgfortran fixes
+for decimal-comma Windows locales after binary I/O (GCC PR121759). Do not
+package the compiler's older libgfortran DLL: it can silently corrupt grid
+coordinates and output times. Users do not need MSYS2 or any locale change.
+Packaging rejects different DLL bytes; selecting a
 different compiler requires updating the component/license/source records
 after review. It must not be bypassed by silently substituting new hashes.
 
@@ -67,7 +76,7 @@ must be on PATH, or pass its full path with `-MakeNSIS`:
 
 This stages dependency license texts, source archives, available conda build
 recipes/patches and a matching application source snapshot, freezes the app,
-and creates `dist/AVACDesktop-0.1.5-preview.1-Setup-x64.exe` plus its SHA-256
+and creates `dist/AVACDesktop-0.1.7-preview.1-Setup-x64.exe` plus its SHA-256
 file. Source downloads are pinned by
 `packaging/windows/distribution-sources.lock.json`; build caches/logs go under
 ignored `build/`. Internet access is needed for initial dependency/source

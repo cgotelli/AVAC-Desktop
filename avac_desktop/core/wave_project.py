@@ -169,14 +169,7 @@ def _source_timing(avac_root: Path) -> tuple[float, int]:
 def fit_wave_domain(
     domain: dict[str, float], terrain_metadata: dict[str, Any], cell_size: float,
 ) -> dict[str, float]:
-    """Fit WAVE inside the requested rectangle using AVAC's edge-trim rule.
-
-    Only metadata are needed, so the GUI can fit the domain before reading
-    terrain. Remove the minimum number of native DEM rows/columns, split
-    evenly across opposite edges (odd extras at north/east). The original
-    raster and AVAC domain are not modified. Terrain aggregation and its
-    topography-only halo are handled separately after fitting.
-    """
+    """Fit whole WAVE cells inside the requested terrain-covered rectangle."""
     try:
         result = {key: float(domain[key]) for key in ("xmin", "xmax", "ymin", "ymax")}
         terrain = {key: float(terrain_metadata[key]) for key in ("xmin", "xmax", "ymin", "ymax")}
@@ -192,30 +185,8 @@ def fit_wave_domain(
         raise ValueError("Wave domain maximum coordinates must be greater than their minimum coordinates.")
     if result["xmin"] < terrain["xmin"] or result["xmax"] > terrain["xmax"] or result["ymin"] < terrain["ymin"] or result["ymax"] > terrain["ymax"]:
         raise ValueError("Wave domain must be fully covered by the selected terrain/bathymetry DEM.")
-    ratio = cell_size / terrain_cell
-    factor = round(ratio)
-    if factor < 1 or not np.isclose(ratio, factor, rtol=0.0, atol=1e-8):
-        raise ValueError(
-            f"Wave grid cell size ({cell_size:g} m) must equal the DEM resolution ({terrain_cell:g} m) "
-            "or be a whole-number multiple of it."
-        )
-    native_counts = {}
-    for axis in ("x", "y"):
-        for edge in ("min", "max"):
-            offset = (result[f"{axis}{edge}"] - terrain[f"{axis}min"]) / terrain_cell
-            if not np.isclose(offset, round(offset), rtol=0.0, atol=1e-8):
-                raise ValueError(f"Wave {axis}-{edge}imum must align with the terrain/bathymetry DEM grid.")
-        native_cells = (result[f"{axis}max"] - result[f"{axis}min"]) / terrain_cell
-        native_counts[axis] = int(round(native_cells))
-        if native_counts[axis] // factor < 2:
-            raise ValueError(f"Wave {axis}-extent must retain at least two {cell_size:g} m cells after edge trimming.")
-    window = AvacRaster(
-        np.empty(0), np.empty(0), np.empty((0, 0)),
-        {**result, "ncols": native_counts["x"], "nrows": native_counts["y"], "cellsize": terrain_cell},
-        "", 1,
-    )
-    fitted = trim_raster_to_computational_grid(window, cell_size)
-    return {key: float(fitted.metadata[key]) for key in result}
+    from .preprocessing import fit_computational_domain
+    return fit_computational_domain(result, cell_size)
 
 
 def _validated_domain(raster: AvacRaster, domain: dict[str, float], cell_size: float) -> dict[str, float]:
@@ -240,6 +211,12 @@ def terrain_for_wave_domain(raster: AvacRaster, domain: dict[str, float], cell_s
     invented and the computational rectangle itself is unchanged.
     """
     source_cell = float(raster.metadata["cellsize"])
+    ratio = cell_size/source_cell
+    aligned = all(np.isclose((domain[axis+'min']-raster.metadata[axis+'min'])/source_cell,
+                            round((domain[axis+'min']-raster.metadata[axis+'min'])/source_cell),
+                            rtol=0., atol=1e-8) for axis in ('x', 'y'))
+    if ratio < 1 or not np.isclose(ratio, round(ratio), rtol=0., atol=1e-8) or not aligned:
+        return _fractional_wave_terrain(raster, domain, cell_size)
     factor = int(round(cell_size / source_cell))
     nx = int(round((domain["xmax"] - domain["xmin"]) / cell_size))
     ny = int(round((domain["ymax"] - domain["ymin"]) / cell_size))
@@ -275,6 +252,40 @@ def terrain_for_wave_domain(raster: AvacRaster, domain: dict[str, float], cell_s
     x = halo_xmin + (np.arange(nx + 2, dtype=float) + .5) * cell_size
     y = halo_ymin + (np.arange(ny + 2, dtype=float) + .5) * cell_size
     return AvacRaster(x, y, values, metadata, raster.crs_authid, raster.band)
+
+
+def _fractional_wave_terrain(raster, domain, cell_size):
+    """Area-weighted DEM cells, with nearest-edge extension only in the halo.
+
+    Integrate piecewise-constant source cells along each axis using prefix
+    sums. Fractional overlaps work for any positive mesh spacing without a
+    dense source-by-destination weight matrix.
+    """
+    values = np.asarray(raster.z, dtype=float)
+    if not np.isfinite(values).all():
+        raise ValueError('Wave terrain contains missing elevations.')
+    source_cell = float(raster.metadata['cellsize'])
+    meta = dict(raster.metadata)
+    for axis, dimension in (('x', 1), ('y', 0)):
+        count = int(round((domain[axis+'max']-domain[axis+'min'])/cell_size)) + 2
+        lower = domain[axis+'min']-cell_size
+        edges = (lower+np.arange(count+1)*cell_size-raster.metadata[axis+'min'])/source_cell
+        n = values.shape[dimension]
+        clipped = np.clip(edges, 0, n)
+        indices = np.minimum(np.floor(clipped).astype(int), n-1)
+        prefix = np.concatenate((np.zeros_like(np.take(values, [0], axis=dimension)),
+                                 np.cumsum(values, axis=dimension)), axis=dimension)
+        shape = [1, 1]; shape[dimension] = len(edges)
+        integrals = np.take(prefix, indices, axis=dimension) + np.take(values, indices, axis=dimension)*(clipped-indices).reshape(shape)
+        integrals += np.take(values, [0], axis=dimension)*np.minimum(edges, 0).reshape(shape)
+        integrals += np.take(values, [-1], axis=dimension)*np.maximum(edges-n, 0).reshape(shape)
+        values = np.diff(integrals, axis=dimension)/(cell_size/source_cell)
+        meta.update({axis+'min': lower, axis+'max': lower+count*cell_size,
+                     'ncols' if axis == 'x' else 'nrows': count})
+    meta['cellsize'] = float(cell_size)
+    x = meta['xmin']+(np.arange(meta['ncols'])+.5)*cell_size
+    y = meta['ymin']+(np.arange(meta['nrows'])+.5)*cell_size
+    return AvacRaster(x, y, values, meta, raster.crs_authid, raster.band)
 
 
 def _wave_config(domain: dict[str, float], cell_size: float, water_level: float, *, duration: float, output_count: int,
@@ -407,7 +418,10 @@ def wave_lake_mask_from_rings(
     if (factor_x < 1 or factor_y < 1
             or not np.isclose(ratio_x, factor_x, rtol=0.0, atol=1e-8)
             or not np.isclose(ratio_y, factor_y, rtol=0.0, atol=1e-8)):
-        raise ValueError("Wave lake-mask grid must be an integer multiple of the source DEM resolution.")
+        from .preprocessing import release_coverage_from_rings
+        if not np.isclose(dx, dy, rtol=0., atol=1e-8):
+            raise ValueError('Wave lake cells must be square.')
+        return release_coverage_from_rings(lake_rings, x, y, dx) >= coverage_threshold
     if factor_x == 1 and factor_y == 1:
         return rasterize(x, y, dx, dy)
 

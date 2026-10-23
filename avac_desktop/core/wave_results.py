@@ -193,6 +193,8 @@ def discover_wave_results(root: str | Path, runtime: str | Path) -> WaveDiscover
         frames.append(WaveFrame(int(suffix), time))
     if not frames:
         raise ValueError("No complete Wave fgout0001 frames were found.")
+    from .results import validate_fgout_geometry
+    validate_fgout_geometry(output, 1, frames[0].frame_id)
     crs = str(marker.get("crs_authid") or "")
     origin_iso = _wave_temporal_origin_iso(root, marker)
     return WaveDiscovery(

@@ -17,6 +17,7 @@ from avac_desktop.core.run_project import prepare_isolated_runtime_run, read_run
 from avac_desktop.core.runtime_execution import prepare_runtime_execution, runtime_solver
 from avac_desktop.core.workspace import create_run_root, materialize_layer_sources
 
+from . import __version__
 from .geo import sha256_file
 from .project import ProjectSession, atomic_text
 from .runtime import ensure_runtime
@@ -96,7 +97,7 @@ def prepare(session: ProjectSession, task=None) -> dict[str, Any]:
                                            session.terrain.raster.crs_authid, session.terrain.raster.crs_authid)
     template = root / "inputs" / "desktop_configuration.yaml"
     atomic_text(template, yaml.safe_dump(session.configuration, sort_keys=False))
-    metadata = dict(plugin="AVAC Desktop", desktop_version="0.1.5", source_dem=str(session.terrain.source),
+    metadata = dict(plugin="AVAC Desktop", desktop_version=__version__, source_dem=str(session.terrain.source),
                     dem_crs=session.terrain.raster.crs_authid, release_layer=str(session.release_path),
                     runtime=str(runtime), execution_mode="bundled_runtime", input_provenance=provenance,
                     desktop_input_signature=signature(session), desktop_project_id=session.project_id)

@@ -128,6 +128,10 @@ def save_project(session: ProjectSession, path: Path) -> None:
 
 def _write_project(session: ProjectSession, path: Path) -> None:
     import yaml
+    from .core.configuration import normalize_mesh_configuration, mesh_sizes
+    session.configuration = normalize_mesh_configuration(session.configuration)
+    if session.configuration:
+        session.wave_setup = dict(session.wave_setup, cell_size=mesh_sizes(session.configuration)[0])
     path = path.expanduser().resolve()
     validate_raster_styles(session.raster_styles)
     # Immutable configuration snapshot first, then atomically replace the

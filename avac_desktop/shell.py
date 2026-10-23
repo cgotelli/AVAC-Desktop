@@ -1,6 +1,8 @@
 """Persistent main window; contextual panels change, project/map/job do not."""
 from __future__ import annotations
 
+from . import __version__
+from .i18n import tr, trf, tr_list, number, parse_number
 from copy import copy, deepcopy
 import json
 import os
@@ -16,7 +18,7 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QComboBox,
 import pyqtgraph as pg
 import yaml
 
-from avac_desktop.core.configuration import load_complete_configuration
+from avac_desktop.core.configuration import load_complete_configuration, normalize_mesh_configuration
 from avac_desktop.core.preprocessing import AvacRaster, initial_snow_surface_elevation
 from avac_desktop.core.profiles import extract_profile, write_profile_csv
 from avac_desktop.core.runtime_assets import default_template_path
@@ -44,7 +46,7 @@ class MainWindow(QMainWindow):
         self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
         from .app import resource_root
         self.setWindowIcon(QIcon(str(resource_root()/"avac_desktop"/"resources"/"AVAC_app_icon.png")))
-        self.setWindowTitle("AVAC Desktop")
+        self.setWindowTitle(tr("AVAC Desktop"))
         self.resize(1500, 950)
         self.setMinimumSize(1050, 700)
         self.tasks = Tasks(self)
@@ -89,15 +91,15 @@ class MainWindow(QMainWindow):
         header.setObjectName("Header")
         row = QHBoxLayout(header)
         row.setContentsMargins(22, 14, 22, 14)
-        brand = QLabel("AVAC <span style='color:#56bdf2'>Desktop</span>")
+        brand = QLabel(tr("AVAC <span style='color:#56bdf2'>Desktop</span>"))
         brand.setObjectName("Brand")
         row.addWidget(brand)
         row.addSpacing(28)
         row.addStretch()
         self.mode_group = QButtonGroup(self)
         self.mode_group.setExclusive(True)
-        self.model_button = QPushButton("Model && Run")
-        self.analyze_button = QPushButton("Results")
+        self.model_button = QPushButton(tr("Model && Run"))
+        self.analyze_button = QPushButton(tr("Results"))
         for button, mode in ((self.model_button, "model_run"), (self.analyze_button, "analyze")):
             button.setCheckable(True)
             button.setMinimumWidth(130)
@@ -112,15 +114,15 @@ class MainWindow(QMainWindow):
         left.setObjectName("Sidebar")
         left_layout = QVBoxLayout(left)
         left_layout.setContentsMargins(6, 18, 6, 12)
-        self.workflow_label = QLabel("  MODEL WORKFLOW")
+        self.workflow_label = QLabel(tr("  MODEL WORKFLOW"))
         self.workflow_label.setObjectName("Eyebrow")
         left_layout.addWidget(self.workflow_label)
         self.navigation = QListWidget()
         self.navigation.currentRowChanged.connect(self._navigate)
         left_layout.addWidget(self.navigation)
         left_layout.addWidget(muted("  Layers"))
-        self.terrain_check = QCheckBox("Terrain")
-        self.release_check = QCheckBox("Release polygons")
+        self.terrain_check = QCheckBox(tr("Terrain"))
+        self.release_check = QCheckBox(tr("Release polygons"))
         self.terrain_check.setChecked(True)
         self.release_check.setChecked(True)
         self.terrain_check.toggled.connect(lambda value: self._layer("terrain", value))
@@ -130,12 +132,12 @@ class MainWindow(QMainWindow):
         self.layer_checks = {"terrain": self.terrain_check, "release": self.release_check}
         for key, title in (("lake", "Lake polygon"), ("mesh", "Initial mesh"), ("profiles", "Profiles"), ("gauges", "Gauges"),
                            ("legends", "Legends"), ("scale", "Scale bar"), ("north", "North arrow")):
-            check = QCheckBox(title)
+            check = QCheckBox(tr(title))
             check.setChecked(self.session.layers.get(key, key != "mesh"))
             if key == "mesh":
-                check.setToolTip("Inspect the actual initial AVAC mesh after Prepare, before Run. "
+                check.setToolTip(tr("Inspect the actual initial AVAC mesh after Prepare, before Run. "
                                  "AMR levels use different colours; zoom in for cells. "
-                                 "Available only in Preparation & Run.")
+                                 "Available only in Preparation & Run."))
             check.toggled.connect(lambda value, k=key: self._layer(k, value))
             left_layout.addWidget(check)
             self.layer_checks[key] = check
@@ -149,19 +151,19 @@ class MainWindow(QMainWindow):
         centre_layout = QVBoxLayout(centre)
         centre_layout.setContentsMargins(10, 10, 10, 10)
         toolbar = QHBoxLayout()
-        self.viewport_title = QLabel("Terrain & release geometry")
+        self.viewport_title = QLabel(tr("Terrain & release geometry"))
         self.viewport_title.setObjectName("Title")
         toolbar.addWidget(self.viewport_title)
         toolbar.addStretch()
         self.background = QComboBox()
-        self.background.addItem("No background", "none")
-        self.background.addItem("OpenStreetMap", "osm")
-        self.background.addItem("Satellite imagery", "satellite")
-        self.background.setToolTip("Optional online background. Requests visible tiles only; georeferenced terrain is required.")
+        self.background.addItem(tr("No background"), "none")
+        self.background.addItem(tr("OpenStreetMap"), "osm")
+        self.background.addItem(tr("Satellite imagery"), "satellite")
+        self.background.setToolTip(tr("Optional online background. Requests visible tiles only; georeferenced terrain is required."))
         self.background.currentIndexChanged.connect(lambda _: self.map.basemap.set_provider(self.background.currentData()))
         toolbar.addWidget(self.background)
         for title, callback in (("Fit domain", lambda: self.map.fit_domain()),):
-            button = QPushButton(title)
+            button = QPushButton(tr(title))
             button.clicked.connect(callback)
             toolbar.addWidget(button)
         centre_layout.addLayout(toolbar)
@@ -169,7 +171,7 @@ class MainWindow(QMainWindow):
         self.map.styles = deepcopy(self.session.raster_styles)
         self.map.basemap.message.connect(self._append_log)
         self.map.styles_changed.connect(self._styles_changed)
-        self.map.coordinate.connect(lambda text: self.coordinate_label.setText(text))
+        self.map.coordinate.connect(lambda text: self.coordinate_label.setText(tr(text)))
         self.map.extent_changed.connect(lambda extent: setattr(self.session, "map_extent", extent))
         self.map.profile_drawn.connect(self._profile_drawn)
         self.map.gauge_placed.connect(self._gauge_placed)
@@ -181,21 +183,24 @@ class MainWindow(QMainWindow):
         self.console = QPlainTextEdit()
         self.console.setReadOnly(True)
         self.console.setMaximumBlockCount(2000)
-        self.console.setPlaceholderText("Input diagnostics and native solver output appear here.")
-        self.bottom.addTab(self.console, "Console && diagnostics")
+        self.console.setPlaceholderText(tr("Input diagnostics and native solver output appear here."))
+        self.bottom.addTab(self.console, tr("Console && diagnostics"))
         light = QApplication.instance().property("appearance") != "dark"
         pg.setConfigOption("foreground", "#36556c" if light else "#cddbe7")
-        self.chart = pg.PlotWidget(background="#ffffff" if light else "#101b28")
+        from .number_widgets import NumericAxis
+        self.chart = pg.PlotWidget(background="#ffffff" if light else "#101b28",
+                                   axisItems={side: NumericAxis(side) for side in ('left', 'bottom')})
         self.chart.showGrid(x=True, y=True, alpha=.15)
-        self.chart.setLabel("bottom", "Distance", units="m")
-        self.chart.setLabel("left", "Elevation", units="m")
-        self.bottom.addTab(self.chart, "Profiles")
-        self.gauge_chart = pg.PlotWidget(background="#ffffff" if light else "#101b28")
+        self.chart.setLabel("bottom", tr("Distance"), units="m")
+        self.chart.setLabel("left", tr("Elevation"), units="m")
+        self.bottom.addTab(self.chart, tr("Profiles"))
+        self.gauge_chart = pg.PlotWidget(background="#ffffff" if light else "#101b28",
+                                         axisItems={side: NumericAxis(side) for side in ('left', 'bottom')})
         self.gauge_chart.showGrid(x=True, y=True, alpha=.15)
-        self.gauge_chart.setLabel("bottom", "Elapsed simulation time", units="s")
-        self.bottom.addTab(self.gauge_chart, "Gauges")
-        self.console_toggle = QPushButton("−")
-        self.console_toggle.setToolTip("Minimize console & diagnostics")
+        self.gauge_chart.setLabel("bottom", tr("Elapsed simulation time"), units="s")
+        self.bottom.addTab(self.gauge_chart, tr("Gauges"))
+        self.console_toggle = QPushButton(tr("−"))
+        self.console_toggle.setToolTip(tr("Minimize console & diagnostics"))
         self.console_toggle.setFixedWidth(40)
         self.console_toggle.clicked.connect(self.toggle_console)
         self.bottom.setCornerWidget(self.console_toggle)
@@ -208,32 +213,32 @@ class MainWindow(QMainWindow):
         timeline_layout = QVBoxLayout(self.timeline)
         timeline_layout.setContentsMargins(0, 7, 0, 0)
         self.dataset = QComboBox()
-        self.dataset.addItem("Avalanche", "avac")
-        self.dataset.addItem("Waves", "wave")
-        self.dataset.addItem("Avalanche + water displacement", "combined")
+        self.dataset.addItem(tr("Avalanche"), "avac")
+        self.dataset.addItem(tr("Waves"), "wave")
+        self.dataset.addItem(tr("Avalanche + water displacement"), "combined")
         self.dataset.currentIndexChanged.connect(self._dataset_changed)
-        timeline_layout.addWidget(QLabel("Results"))
+        timeline_layout.addWidget(QLabel(tr("Results")))
         timeline_layout.addWidget(self.dataset)
-        self.play = QPushButton("Play")
+        self.play = QPushButton(tr("Play"))
         self.play.clicked.connect(self._play_pause)
-        previous = QPushButton("‹")
+        previous = QPushButton(tr("‹"))
         previous.clicked.connect(lambda: self.slider.setValue(max(0, self.slider.value()-1)))
-        following = QPushButton("›")
+        following = QPushButton(tr("›"))
         following.clicked.connect(lambda: self.slider.setValue(min(self.slider.maximum(), self.slider.value()+1)))
         self.previous_frame, self.next_frame = previous, following
         self.slider = QSlider(Qt.Horizontal)
         self.slider.valueChanged.connect(self._frame_changed)
-        self.time_label = QLabel("No completed run selected")
+        self.time_label = QLabel(tr("No completed run selected"))
         self.variable = QComboBox()
         for key in ("depth", "velocity", "pressure", "snow_surface_elevation"):
-            self.variable.addItem(LABELS[key], key)
+            self.variable.addItem(tr(LABELS[key]), key)
         self.variable.currentIndexChanged.connect(self._variable_changed)
         self.fps = QSpinBox()
         self.fps.setRange(1, 30)
         self.fps.setValue(5)
-        self.fps.setSuffix(" fps")
+        self.fps.setSuffix(tr(" fps"))
         self.fps.valueChanged.connect(lambda fps: self.play_timer.setInterval(int(1000/fps)))
-        timeline_layout.addWidget(QLabel("Display field"))
+        timeline_layout.addWidget(QLabel(tr("Display field")))
         timeline_layout.addWidget(self.variable)
         playback = QHBoxLayout()
         for widget in (previous, self.play, following):
@@ -260,14 +265,14 @@ class MainWindow(QMainWindow):
         self.horizontal.setStretchFactor(1, 1)
         layout.addWidget(self.horizontal, 1)
         self.setCentralWidget(root)
-        self.status_label = QLabel("Unconfigured")
+        self.status_label = QLabel(tr("Unconfigured"))
         self.status_label.setObjectName("Status")
         self.statusBar().addWidget(self.status_label)
         self.progress_bar = QProgressBar()
         self.progress_bar.setFixedWidth(160)
         self.progress_bar.setValue(0)
         self.statusBar().addPermanentWidget(self.progress_bar)
-        self.global_stop = QPushButton("Stop / cancel")
+        self.global_stop = QPushButton(tr("Stop / cancel"))
         self.global_stop.setObjectName("Stop")
         self.global_stop.clicked.connect(self.stop)
         self.global_stop.setEnabled(False)
@@ -277,7 +282,7 @@ class MainWindow(QMainWindow):
         self.play_timer.timeout.connect(self._advance_frame)
 
     def _button(self, key, title, callback, primary=False):
-        button = QPushButton(title.replace("&", "&&"))
+        button = QPushButton(tr(title.replace("&", "&&")))
         if primary:
             button.setObjectName("Primary")
         def clicked():
@@ -289,7 +294,7 @@ class MainWindow(QMainWindow):
                 if self.tasks.active:
                     if self.tasks.active.passive:
                         self.play_timer.stop()
-                        self.play.setText("Play")
+                        self.play.setText(tr("Play"))
                         QTimer.singleShot(20, invoke)
                     else:
                         self._error("Wait for the current data task to finish.")
@@ -319,7 +324,7 @@ class MainWindow(QMainWindow):
         cpu = self.cpu = QSpinBox()
         cpu.setRange(1, os.cpu_count() or 1)
         cpu.setValue(self.session.threads)
-        cpu.setSuffix(" CPU threads")
+        cpu.setSuffix(tr(" CPU threads"))
         cpu.valueChanged.connect(lambda value: setattr(self.session, "threads", value))
         self.panels.layouts["run"].insertWidget(2, cpu)
         self.panels.layouts["analyze"].insertWidget(1, self.timeline)
@@ -327,16 +332,16 @@ class MainWindow(QMainWindow):
         self._button("gauges", "Place point gauge", lambda: self.map.set_tool("gauge"))
         for kind, label in (("profile", "Profile"), ("gauge", "Gauge")):
             page = "profiles" if kind == "profile" else "gauges"
-            self._button(page, f"Load {kind}s shapefile", self.load_sampling_shapes)
+            self._button(page, trf('Load {0}s shapefile', tr(kind)), self.load_sampling_shapes)
             selector = QComboBox()
-            selector.setToolTip(f"Select a saved {kind} to inspect the current result.")
+            selector.setToolTip(trf('Select a saved {0} to inspect the current result.', tr(kind)))
             setattr(self, f"{kind}_selector", selector)
-            self.panels.layouts[page].insertWidget(self.panels.layouts[page].count()-1, QLabel(label))
+            self.panels.layouts[page].insertWidget(self.panels.layouts[page].count()-1, QLabel(tr(label)))
             self.panels.layouts[page].insertWidget(self.panels.layouts[page].count()-1, selector)
             selector.currentIndexChanged.connect(lambda _, k=kind: self._sampling_selected(k))
-            self._button(page, f"Export {kind}s shapefile", lambda checked=False, k=kind: self.save_sampling_shapes(k))
-            self._button(page, f"Export {kind} CSV", self.export_csv)
-            self._button(page, f"Export {kind} figure PNG", self.export_figure)
+            self._button(page, trf('Export {0}s shapefile', tr(kind)), lambda checked=False, k=kind: self.save_sampling_shapes(k))
+            self._button(page, trf('Export {0} CSV', tr(kind)), self.export_csv)
+            self._button(page, trf('Export {0} figure PNG', tr(kind)), self.export_figure)
             if kind == "profile":
                 self._button(page, "Export profile MP4", self.export_video)
         self._button("analyze", "Export current field GeoTIFF", self.export_raster)
@@ -347,9 +352,6 @@ class MainWindow(QMainWindow):
         self.map.lake_seed.connect(self._derive_lake)
         self._button("wave", "Preview initial WAVE depth", self.preview_wave)
         wave_layout = self.panels.layouts["wave"]
-        grid = self.panels.wave_controls["cell_size"].parentWidget()
-        wave_layout.removeWidget(grid)
-        wave_layout.insertWidget(wave_layout.count()-1, grid)
         self._prepared_wave = None
 
     def _menus(self):
@@ -362,38 +364,38 @@ class MainWindow(QMainWindow):
         self.main_menu = QMenuBar()
         chrome_layout.addWidget(self.main_menu)
         self.setMenuWidget(chrome)
-        menu = self.file_menu = self.main_menu.addMenu("File")
+        menu = self.file_menu = self.main_menu.addMenu(tr("File"))
         for title, shortcut, callback in (("New project", "Ctrl+N", self.new_project), ("Open project…", "Ctrl+O", self.open_project),
                                           ("Save project", "Ctrl+S", self.save), ("Save project as…", "Ctrl+Shift+S", lambda: self.save(as_new=True)),
                                           ("Load standard parameters", "", self.load_standard_parameters),
                                           ("Load AVAC configuration…", "", self.load_yaml),
                                           ("Export AVAC configuration…", "", self.export_configuration),
                                           ("Exit", "Alt+F4", self.close)):
-            action = QAction(title, self)
+            action = QAction(tr(title), self)
             if shortcut:
                 action.setShortcut(QKeySequence(shortcut))
             action.triggered.connect(callback)
-            menu.addAction(action)
-        self.edit_menu = self.main_menu.addMenu("Edit")
-        self.edit_menu.addAction("Settings…", self.edit_settings)
-        self.extensions_menu = self.main_menu.addMenu("Extensions")
-        self.wave_action = self.extensions_menu.addAction("Activate Impulse Wave")
+            menu.addAction(tr(action))
+        self.edit_menu = self.main_menu.addMenu(tr("Edit"))
+        self.edit_menu.addAction(tr("Settings…"), self.edit_settings)
+        self.extensions_menu = self.main_menu.addMenu(tr("Extensions"))
+        self.wave_action = self.extensions_menu.addAction(tr("Activate Impulse Wave"))
         self.wave_action.setCheckable(True)
         self.wave_action.setChecked(self.session.wave_enabled)
         self.wave_action.toggled.connect(self._enable_wave)
-        view = self.view_menu = self.main_menu.addMenu("View")
-        view.addAction("Minimize / restore console", self.toggle_console)
-        view.addAction("Raster appearance…", self.map.edit_raster_style)
-        fit = view.addAction("Fit terrain")
+        view = self.view_menu = self.main_menu.addMenu(tr("View"))
+        view.addAction(tr("Minimize / restore console"), self.toggle_console)
+        view.addAction(tr("Raster appearance…"), self.map.edit_raster_style)
+        fit = view.addAction(tr("Fit terrain"))
         fit.setShortcut("F")
         fit.triggered.connect(self.map.fit_domain)
-        panels = view.addAction("Toggle side panels")
+        panels = view.addAction(tr("Toggle side panels"))
         panels.setShortcut("Tab")
         panels.triggered.connect(self._toggle_panels)
-        help_menu = self.help_menu = self.main_menu.addMenu("Help")
-        help_menu.addAction("Load tutorial", self.load_tutorial)
-        help_menu.addAction("License and scientific-use notice", self.show_license_notice)
-        help_menu.addAction("About AVAC Desktop", lambda: QMessageBox.about(self, "AVAC Desktop", "AVAC Desktop 0.1.5\nFree software: AGPL-3.0-or-later.\nProvided without warranty, to the extent permitted by law.\nScientific desktop development build; not a certified hazard assessment.\nSee Help → License and scientific-use notice."))
+        help_menu = self.help_menu = self.main_menu.addMenu(tr("Help"))
+        help_menu.addAction(tr("Load tutorial"), self.load_tutorial)
+        help_menu.addAction(tr("License and scientific-use notice"), self.show_license_notice)
+        help_menu.addAction(tr("About AVAC Desktop"), lambda: QMessageBox.about(self, tr("AVAC Desktop"), trf("AVAC Desktop {0}\nFree software: AGPL-3.0-or-later.\nProvided without warranty, to the extent permitted by law.\nScientific desktop development build; not a certified hazard assessment.\nSee Help → License and scientific-use notice.", __version__)))
         # PySide 6.8 can invalidate a menu when an ephemeral menuAction wrapper
         # is collected after QAction.menu(); retain those wrappers explicitly.
         self._menu_actions = self.main_menu.actions()
@@ -410,18 +412,20 @@ class MainWindow(QMainWindow):
         if mode == "model_run" and self.session.wave_enabled:
             self.nav_keys.insert(4, "wave")
             names[-1:] = ["05  Waves", "06  Run"]
-        self.navigation.addItems(names)
+        self.navigation.addItems(tr_list(names))
+        # Translated workflow names need more space than the English defaults.
+        self.horizontal.widget(0).setMinimumWidth(max(180, self.navigation.sizeHintForColumn(0)+20))
         selected = self.nav_keys.index(self.session.result_page) if mode == "analyze" else 0
         self.navigation.setCurrentRow(selected)
         self.navigation.blockSignals(False)
-        self.workflow_label.setText("  MODEL WORKFLOW" if mode == "model_run" else "  RESULTS")
+        self.workflow_label.setText(tr("  MODEL WORKFLOW" if mode == "model_run" else "  RESULTS"))
         if mode == "model_run":
             self.bottom.setCurrentWidget(self.console)
         self.map.set_model_tools(mode == "model_run")
         if mode == "model_run" and self.map.tool in ("profile", "gauge"):
             self.map.set_tool("pan")
         self.timeline.setVisible(mode == "analyze")
-        self.viewport_title.setText("Terrain & release geometry" if mode == "model_run" else "Map")
+        self.viewport_title.setText(tr("Terrain & release geometry" if mode == "model_run" else "Map"))
         self._navigate(selected)
         self._refresh_mesh()
         if changed:
@@ -464,22 +468,22 @@ class MainWindow(QMainWindow):
         return snapshot
 
     def _update_project(self):
-        self.setWindowTitle(f"{self.session.name}{' •' if self.session.dirty else ''} — AVAC Desktop")
+        self.setWindowTitle(trf('{0}{1} — AVAC Desktop', self.session.name, ' •' if self.session.dirty else ''))
         if not self.session.terrain:
-            self.panels.terrain_info.setText("Import a terrain DEM and release polygons to begin.\n\nParameters: " + ("loaded" if self.session.configuration else "none loaded — see File menu"))
-            self.panels.release_info.setText("No release polygons loaded.")
+            self.panels.terrain_info.setText(tr("Import a terrain DEM and release polygons to begin.\n\nParameters: ") + tr("loaded" if self.session.configuration else "none loaded — see File menu"))
+            self.panels.release_info.setText(tr("No release polygons loaded."))
         if self.session.terrain:
             raster = self.session.terrain.raster
             m = raster.metadata
             finite = np.isfinite(raster.z)
-            crs_label = raster.crs_authid or "None (local XY; metres assumed)"
-            self.panels.terrain_info.setText(f"{self.session.terrain.source.name}\n\nCRS: {crs_label}\nGrid: {m['ncols']:,} × {m['nrows']:,}\nNative cell: {m['cellsize']:g} m\nElevation: {np.nanmin(raster.z):.4g}–{np.nanmax(raster.z):.4g} m\nNoData: {100*(1-np.mean(finite)):.3g}%\nScientific array: {raster.z.nbytes/1024**2:.1f} MiB\n\nBounds [m]\nE {m['xmin']:.3f} … {m['xmax']:.3f}\nN {m['ymin']:.3f} … {m['ymax']:.3f}\n\nProject folder: {self.session.project_path.parent if self.session.project_path else 'Save the project to choose its folder'}")
-            self.panels.release_info.setText(f"{len(self.session.rings)} polygons in {crs_label}\n{self.session.release_path or 'Import release polygons'}")
+            crs_label = raster.crs_authid or tr("None (local XY; metres assumed)")
+            self.panels.terrain_info.setText(trf('{0}\n\nCRS: {1}\nGrid: {2:,} × {3:,}\nNative cell: {4:g} m\nElevation: {5:.4g}–{6:.4g} m\nNoData: {7:.3g}%\nScientific array: {8:.1f} MiB\n\nBounds [m]\nE {9:.3f} … {10:.3f}\nN {11:.3f} … {12:.3f}\n\nProject folder: {13}', self.session.terrain.source.name, crs_label, m['ncols'], m['nrows'], m['cellsize'], np.nanmin(raster.z), np.nanmax(raster.z), 100*(1-np.mean(finite)), raster.z.nbytes/1024**2, m['xmin'], m['xmax'], m['ymin'], m['ymax'], self.session.project_path.parent if self.session.project_path else tr('Save the project to choose its folder')))
+            self.panels.release_info.setText(trf('{0} polygons in {1}\n{2}', len(self.session.rings), crs_label, self.session.release_path or tr('Import release polygons')))
 
     def load_paths(self, dem: Path, release: Path | None = None, *, tutorial=False, preserve_project_state=False):
         if self.tasks.active or not self._can_replace():
             return
-        self.status_label.setText("Loading terrain…")
+        self.status_label.setText(tr("Loading terrain…"))
         self.play_timer.stop()
         def work(task):
             terrain = read_terrain(dem)
@@ -515,7 +519,7 @@ class MainWindow(QMainWindow):
                 self.session.analysis_features = features
             self._refresh_sampling_selectors()
             self._restore_map_layers()
-            self.status_label.setText("Terrain loaded")
+            self.status_label.setText(tr("Terrain loaded"))
             self._update_project()
             self.data_loaded.emit()
         self.tasks.submit(work, loaded)
@@ -526,7 +530,7 @@ class MainWindow(QMainWindow):
         from .app import resource_root
         root = resource_root()/"tutorial"
         if not all((root/name).is_file() for name in ("topo_cut_dam_1m.tif", "avalanches.geojson")):
-            QMessageBox.information(self, "Tutorial files missing", "The tutorial is included in the Windows installer. Reinstall AVAC Desktop to restore missing files. For a source checkout, run python tools/fetch_tutorial.py, then choose Help > Load tutorial again.")
+            QMessageBox.information(self, tr("Tutorial files missing"), tr("The tutorial is included in the Windows installer. Reinstall AVAC Desktop to restore missing files. For a source checkout, run python tools/fetch_tutorial.py, then choose Help > Load tutorial again."))
             return
         self._adopt(ProjectSession(name="Tutorial · Alpine avalanche", configuration=load_complete_configuration(default_template_path())))
         self.load_paths(root/"topo_cut_dam_1m.tif", root/"avalanches.geojson", tutorial=True)
@@ -539,7 +543,7 @@ class MainWindow(QMainWindow):
     def import_dem(self):
         if not self._can_replace():
             return
-        filename, _ = QFileDialog.getOpenFileName(self, "Import projected terrain", "", "Raster DEM (*.tif *.tiff *.asc);;All files (*)")
+        filename, _ = QFileDialog.getOpenFileName(self, tr("Import projected terrain"), "", tr("Raster DEM (*.tif *.tiff *.asc);;All files (*)"))
         if filename:
             self.load_paths(Path(filename))
 
@@ -550,7 +554,7 @@ class MainWindow(QMainWindow):
         if self.tasks.active or self.job.running:
             self._error("Finish the current task/run before replacing its inputs.")
             return
-        filename, _ = QFileDialog.getOpenFileName(self, "Import release polygons", "", "Polygon data (*.geojson *.gpkg *.shp);;All files (*)")
+        filename, _ = QFileDialog.getOpenFileName(self, tr("Import release polygons"), "", tr("Polygon data (*.geojson *.gpkg *.shp);;All files (*)"))
         if filename:
             path = Path(filename)
             self.tasks.submit(lambda task: (read_polygons(path, self.session.terrain.wkt), sha256_file(path)),
@@ -569,8 +573,8 @@ class MainWindow(QMainWindow):
             return
         source = self.session.release_export_path or (self.session.release_path if not self.session.release_edited else None)
         suggested = str(source) if source else str((self.session.workspace or Path.cwd())/"releases.geojson")
-        filename, _ = QFileDialog.getSaveFileName(self, "Export release polygons", suggested,
-                                                "Polygon data (*.geojson *.gpkg *.shp)")
+        filename, _ = QFileDialog.getSaveFileName(self, tr("Export release polygons"), suggested,
+                                                tr("Polygon data (*.geojson *.gpkg *.shp)"))
         if filename:
             from .geometry import export_release_polygons
             try:
@@ -578,7 +582,7 @@ class MainWindow(QMainWindow):
                 if self.session.release_path and path == self.session.release_path.resolve():
                     self.session.release_hash = sha256_file(path)
                     self._configuration_changed()
-                self._append_log(f"Exported releases: {path}")
+                self._append_log(trf('Exported releases: {0}', path))
             except (ValueError, OSError, RuntimeError) as exc:
                 self._error(str(exc))
 
@@ -638,12 +642,12 @@ class MainWindow(QMainWindow):
         if self.panels.timing_error:
             self._error(self.panels.timing_error)
             return
-        filename, _ = QFileDialog.getSaveFileName(self, "Export AVAC configuration", "AVAC_configuration.yaml", "YAML (*.yaml *.yml)")
+        filename, _ = QFileDialog.getSaveFileName(self, tr("Export AVAC configuration"), "AVAC_configuration.yaml", tr("YAML (*.yaml *.yml)"))
         if filename:
             from .project import atomic_text
             try:
                 atomic_text(Path(filename), yaml.safe_dump(self.session.configuration, sort_keys=False))
-                self._append_log(f"Exported AVAC configuration: {filename}")
+                self._append_log(trf('Exported AVAC configuration: {0}', filename))
             except (OSError, ValueError) as exc:
                 self._error(str(exc))
 
@@ -653,6 +657,8 @@ class MainWindow(QMainWindow):
         from .preferences import appearance
         dialog = SettingsDialog(self)
         if dialog.exec() == QDialog.Accepted:
+            from .i18n import apply_separator, saved_separator
+            apply_separator(QApplication.instance(), saved_separator())
             apply_theme(QApplication.instance(), appearance())
             self.map.apply_appearance(appearance())
             self.map.basemap.set_provider(self.background.currentData())
@@ -660,6 +666,17 @@ class MainWindow(QMainWindow):
                 chart.setBackground("#ffffff" if appearance() == "light" else "#101b28")
                 chart.getAxis("left").setTextPen("#36556c" if appearance() == "light" else "#cddbe7")
                 chart.getAxis("bottom").setTextPen("#36556c" if appearance() == "light" else "#cddbe7")
+                for side in ("left", "bottom"):
+                    chart.getAxis(side).picture = None
+                    chart.getAxis(side).update()
+            self._update_project()
+            self.panels._refresh_timing()
+            if self.current_raster is not None:
+                self.time_label.setText(trf('t = {0:.1f} s', self.current_time)
+                                        if self.current_time is not None else tr("Full-run summary"))
+                self.map.time_text = self.time_label.text()
+                self._sample_profile()
+                self._sample_gauge()
             self._resize_panel()
 
     def toggle_console(self):
@@ -667,24 +684,26 @@ class MainWindow(QMainWindow):
         if self._console_collapsed:
             self._expanded_sizes = self.vertical.sizes()
             self.bottom.setMaximumHeight(self.bottom.tabBar().sizeHint().height()+4)
-            self.console_toggle.setText("+")
-            self.console_toggle.setToolTip("Restore console & diagnostics")
+            self.console_toggle.setText(tr("+"))
+            self.console_toggle.setToolTip(tr("Restore console & diagnostics"))
         else:
             self.bottom.setMaximumHeight(16777215)
             self.vertical.setSizes(getattr(self, "_expanded_sizes", [630, 180]))
-            self.console_toggle.setText("−")
-            self.console_toggle.setToolTip("Minimize console & diagnostics")
+            self.console_toggle.setText(tr("−"))
+            self.console_toggle.setToolTip(tr("Minimize console & diagnostics"))
 
     def show_license_notice(self):
         from .app import resource_root
         dialog = QDialog(self)
-        dialog.setWindowTitle("License and scientific-use notice")
+        dialog.setWindowTitle(tr("License and scientific-use notice"))
         dialog.resize(760, 620)
         layout = QVBoxLayout(dialog)
         text = QPlainTextEdit()
         text.setReadOnly(True)
         root = resource_root()
-        text.setPlainText((root/"DISCLAIMER.txt").read_text(encoding="utf-8")+"\n\n"+
+        from .i18n import language
+        notice = Path(__file__).with_name('resources')/'legal'/f'{language()}.txt'
+        text.setPlainText(notice.read_text(encoding="utf-8-sig")+"\n\n"+
                           (root/"LICENSE").read_text(encoding="utf-8"))
         layout.addWidget(text)
         buttons = QDialogButtonBox(QDialogButtonBox.Close)
@@ -755,7 +774,7 @@ class MainWindow(QMainWindow):
                 return
             self._initial_mesh, self._initial_mesh_run = mesh, root
             levels = sorted(set(map(int, mesh.layers[0].patches[:, 6])))
-            message = f"Initial AVAC mesh: levels {levels}, {len(mesh.layers[0].patches)} patches. No time steps taken."
+            message = trf('Initial AVAC mesh: levels {0}, {1} patches. No time steps taken.', levels, len(mesh.layers[0].patches))
             if max(levels) < int(snapshot.configuration['computation']['refinement']):
                 message += " Warning: the initial mesh does not reach the requested refinement level. Check release depth and dry tolerance."
             self._append_log(message)
@@ -765,15 +784,15 @@ class MainWindow(QMainWindow):
             try:
                 return inspect_initial_mesh(snapshot, task)
             except (OSError, ValueError) as exc:
-                return MeshSnapshot(notice=f"Initial mesh unavailable: {exc}")
+                return MeshSnapshot(notice=trf('Initial mesh unavailable: {0}', exc))
         self.tasks.submit(work, done)
 
     def _update_background_availability(self):
         terrain = self.map.terrain
         available = terrain is None or has_geographic_reference(terrain)
         self.background.setEnabled(available)
-        self.background.setToolTip("Optional online background. A geographic CRS is required." if available else
-                                   "Backgrounds are unavailable for terrain without a geographic CRS.")
+        self.background.setToolTip(tr("Optional online background. A geographic CRS is required." if available else
+                                   "Backgrounds are unavailable for terrain without a geographic CRS."))
         if available:
             self._background_warning_key = None
             return
@@ -784,8 +803,7 @@ class MainWindow(QMainWindow):
         key = (str(terrain.source), terrain.source_hash, terrain.wkt)
         if getattr(self, "_background_warning_key", None) != key:
             reason = "DEM has no CRS; coordinates and elevations are assumed to be metres" if not terrain.raster.crs_authid else "DEM uses a local Cartesian CRS"
-            self._append_log(f"Warning: {reason}. Background maps and satellite imagery are disabled. "
-                             "Imported release, lake, profile and gauge geometries use the same XY coordinates without reprojection.")
+            self._append_log(trf('Warning: {0}. Background maps and satellite imagery are disabled. Imported release, lake, profile and gauge geometries use the same XY coordinates without reprojection.', reason))
             self._background_warning_key = key
 
     def _configuration_changed(self):
@@ -810,7 +828,7 @@ class MainWindow(QMainWindow):
         snapshot = self._snapshot()
         def done(issues):
             self._append_log("Validation: " + ("\n".join(issues) if issues else "Inputs satisfy the current schema/grid preflight. Preview verifies release coverage and corrected depths."))
-            self.status_label.setText("Invalid" if issues else "Ready to preview")
+            self.status_label.setText(tr("Invalid" if issues else "Ready to preview"))
         self.tasks.submit(lambda task: simulation.validate(snapshot), done)
 
     def check_runtime(self):
@@ -820,7 +838,7 @@ class MainWindow(QMainWindow):
             return root, manifest
         def done(result):
             root, manifest = result
-            self._append_log(f"Verified native runtime: {root}\nSolver: {manifest['solver']}")
+            self._append_log(trf('Verified native runtime: {0}\nSolver: {1}', root, manifest['solver']))
         self.tasks.submit(work, done)
 
     def preview_depth(self, checked=False, *, surface=False):
@@ -833,9 +851,9 @@ class MainWindow(QMainWindow):
             self.current_time = None
             self.map.set_field(self.current_raster, "Initial snow surface [m]" if surface else "Initial mobile depth [m]")
             self._sample_profile()
-            self.status_label.setText("Initial state previewed")
+            self.status_label.setText(tr("Initial state previewed"))
             cell = float(raster.metadata["cellsize"])
-            self._append_log(f"Exact scientific preview: max depth {np.max(depth):.9g} m; release footprint {np.sum(coverage)*cell**2:.9g} m²; initial mobile volume {np.sum(depth)*cell**2:.9g} m³.")
+            self._append_log(trf('Exact scientific preview: max depth {0:.9g} m; release footprint {1:.9g} m²; initial mobile volume {2:.9g} m³.', np.max(depth), np.sum(coverage)*cell**2, np.sum(depth)*cell**2))
         self.tasks.submit(lambda task: simulation.preview(snapshot, task), done)
 
     def _show_terrain(self):
@@ -855,7 +873,7 @@ class MainWindow(QMainWindow):
             self._error(self.panels.timing_error)
             return
         snapshot = self._snapshot()
-        self.status_label.setText("Preparing…")
+        self.status_label.setText(tr("Preparing…"))
         self._run_plan = None
         self.session.prepared_signature = None
         def done(result):
@@ -866,10 +884,10 @@ class MainWindow(QMainWindow):
                 message = "AVAC prepared. WAVE will be staged and run automatically after AVAC completes." if snapshot.wave_enabled else "Native controls and exact initial state are staged."
             else:
                 self.session.selected_run = result["source"]
-                message = f"Matching completed avalanche reused:\n{result['source']}\n\nWAVE prepared:\n{result['wave'][0]}"
-            self.panels.run_info.setText(message)
+                message = trf('Matching completed avalanche reused:\n{0}\n\nWAVE prepared:\n{1}', result['source'], result['wave'][0])
+            self.panels.run_info.setText(tr(message))
             self._refresh_mesh()
-            self.status_label.setText("Prepared")
+            self.status_label.setText(tr("Prepared"))
             self._append_log(message)
         def work(worker):
             worker.signals.progress.emit(2)
@@ -911,7 +929,7 @@ class MainWindow(QMainWindow):
         except (OSError, ValueError, KeyError) as exc:
             self._pipeline_active = False
             self._run_plan = None
-            self._error(f"Could not record/start the simulation: {exc}")
+            self._error(trf('Could not record/start the simulation: {0}', exc))
 
     def stop(self):
         self._action_generation += 1
@@ -951,7 +969,7 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(0, self._sample_gauge)
 
     def _job_state(self, state):
-        self.status_label.setText(state.capitalize())
+        self.status_label.setText(tr(state.capitalize()))
         self.global_stop.setEnabled(state == "running")
         self.run_button.setEnabled(False)
         self.run_button.setVisible(False)
@@ -969,7 +987,7 @@ class MainWindow(QMainWindow):
     def _job_progress(self, count, total):
         self.progress_bar.setRange(0, total)
         self.progress_bar.setValue(count)
-        self.status_label.setText(f"Running · {count}/{total} output frames")
+        self.status_label.setText(trf('Running · {0}/{1} output frames', count, total))
 
     def _run_completed(self, root):
         recorded = False
@@ -980,7 +998,7 @@ class MainWindow(QMainWindow):
                 recorded = True
                 self._append_log("Completed results recorded in the project automatically.")
             except (OSError, ValueError, KeyError) as exc:
-                self._error(f"Results are safe at {root}, but their project links could not be saved: {exc}. Use File → Save project before closing.")
+                self._error(trf('Results are safe at {0}, but their project links could not be saved: {1}. Use File → Save project before closing.', root, exc))
         if self.job.kind == "WAVE":
             self.session.selected_wave = root
             self.session.dirty |= not recorded
@@ -1006,7 +1024,7 @@ class MainWindow(QMainWindow):
         if self.tasks.active:
             QTimer.singleShot(10, self._continue_wave)
             return
-        self.status_label.setText("Preparing WAVE coupling…")
+        self.status_label.setText(tr("Preparing WAVE coupling…"))
         self._append_log("AVAC completed. Preparing conservative shoreline coupling and WAVE automatically.")
         def done(result):
             if self._pipeline_active:
@@ -1023,7 +1041,7 @@ class MainWindow(QMainWindow):
         if self.tasks.active or self.job.running or not self.session.terrain:
             self._error("Load terrain and finish the active task before changing the lake polygon.")
             return
-        filename, _ = QFileDialog.getOpenFileName(self, "Import lake polygon", "", "Polygon data (*.gpkg *.geojson *.shp)")
+        filename, _ = QFileDialog.getOpenFileName(self, tr("Import lake polygon"), "", tr("Polygon data (*.gpkg *.geojson *.shp)"))
         if filename:
             path = Path(filename)
             def done(rings):
@@ -1031,7 +1049,7 @@ class MainWindow(QMainWindow):
                 self._lake_rings = rings
                 self._restore_map_layers()
                 self._configuration_changed()
-                self.panels.wave_info.setText(f"Lake polygon: {path}\nAVAC source: {self.session.selected_run or 'Computed automatically when this project runs'}")
+                self.panels.wave_info.setText(trf('Lake polygon: {0}\nAVAC source: {1}', path, self.session.selected_run or tr('Computed automatically when this project runs')))
             self.tasks.submit(lambda task: read_polygons(path, self.session.terrain.wkt), done)
 
     def _derive_lake(self, x, y):
@@ -1044,7 +1062,7 @@ class MainWindow(QMainWindow):
             self.session.lake_path = path
             self._restore_map_layers()
             self._configuration_changed()
-            self.panels.wave_info.setText(f"Derived connected lake: {path}\nWater elevation: {self.session.wave_setup['water_level']} m")
+            self.panels.wave_info.setText(trf('Derived connected lake: {0}\nWater elevation: {1} m', path, self.session.wave_setup['water_level']))
             self.map.set_tool("pan")
         def work(task):
             path = derive_lake(snapshot, x, y)
@@ -1061,7 +1079,7 @@ class MainWindow(QMainWindow):
             self.current_variable, self.current_time = "water_depth", None
             self.map.set_field(self.current_raster, "Initial WAVE water depth [m]")
             self._sample_profile()
-            self._append_log(f"WAVE lake preview: {lake.shoreline_faces.shape[0]} internal shoreline faces; {lake.stabilized_cells} cells stabilized by existing solver-grid preparation.")
+            self._append_log(trf('WAVE lake preview: {0} internal shoreline faces; {1} cells stabilized by existing solver-grid preparation.', lake.shoreline_faces.shape[0], lake.stabilized_cells))
         self.tasks.submit(lambda task: preview_lake(snapshot), done)
 
     def load_wave(self, root, *, restore_selection=False):
@@ -1093,7 +1111,7 @@ class MainWindow(QMainWindow):
             item = self.dataset.model().item(index)
             enabled = available[self.dataset.itemData(index)]
             item.setEnabled(enabled)
-            item.setToolTip("" if enabled else "No completed results for this view in the loaded project.")
+            item.setToolTip(tr("" if enabled else "No completed results for this view in the loaded project."))
         self.dataset.setCurrentIndex(self.dataset.findData(self.session.analysis_kind))
         self.dataset.blockSignals(False)
 
@@ -1196,7 +1214,7 @@ class MainWindow(QMainWindow):
             self.variable.blockSignals(True)
             self.variable.clear()
             for key in variables:
-                self.variable.addItem(LABELS[key], key)
+                self.variable.addItem(tr(LABELS[key]), key)
             self.variable.setCurrentIndex(self.variable.findData(variable))
             self.variable.blockSignals(False)
             self.timeline.setEnabled(True)
@@ -1235,7 +1253,7 @@ class MainWindow(QMainWindow):
                 self.map.set_additional_field(water[1], LABELS["surface_displacement"])
         else:
             self.map.set_field(raster, LABELS[self.session.variable])
-        self.time_label.setText(f"t = {time:.1f} s" if time is not None else "Full-run summary")
+        self.time_label.setText(tr(trf('t = {0:.1f} s', time) if time is not None else "Full-run summary"))
         self.map.time_text = self.time_label.text()
         self._update_temporal_controls()
         self.map.set_analysis_features(self.session.analysis_features)
@@ -1248,7 +1266,7 @@ class MainWindow(QMainWindow):
 
     def _stop_playback(self):
         self.play_timer.stop()
-        self.play.setText("Play")
+        self.play.setText(tr("Play"))
         self._pending_frame = False
         self._gauge_cache_key = None
 
@@ -1283,36 +1301,36 @@ class MainWindow(QMainWindow):
             control.setEnabled(temporal)
         if not temporal:
             self.play_timer.stop()
-            self.play.setText("Play")
+            self.play.setText(tr("Play"))
             self.gauge_chart.clear()
-            self.gauge_chart.setTitle("Gauges require a time-dependent result")
-            self.gauge_chart.setLabel("left", "")
+            self.gauge_chart.setTitle(tr("Gauges require a time-dependent result"))
+            self.gauge_chart.setLabel("left", tr(""))
             self.gauge = None
             if self.profile_selector.currentData() and self.bottom.currentWidget() is self.gauge_chart:
                 self.bottom.setCurrentWidget(self.chart)
         elif not self.play_timer.isActive():
-            self.play.setText("Reset" if self.slider.value() == self.slider.maximum() else "Play")
+            self.play.setText(tr("Reset" if self.slider.value() == self.slider.maximum() else "Play"))
 
     def _play_pause(self):
         if self._video_export:
             return
         if self.play_timer.isActive():
             self.play_timer.stop()
-            self.play.setText("Play")
+            self.play.setText(tr("Play"))
         elif self.results and self._is_temporal():
             if self.slider.value() == self.slider.maximum():
                 self.slider.setValue(0)
-                self.play.setText("Play")
+                self.play.setText(tr("Play"))
                 return
             self.play_timer.start()
-            self.play.setText("Pause")
+            self.play.setText(tr("Pause"))
 
     def _advance_frame(self):
         if self.tasks.active:
             return
         if self.slider.value() == self.slider.maximum():
             self.play_timer.stop()
-            self.play.setText("Reset")
+            self.play.setText(tr("Reset"))
         else:
             self.slider.setValue(self.slider.value()+1)
 
@@ -1348,10 +1366,10 @@ class MainWindow(QMainWindow):
         self.profile = profile_cached(path, feature, raster, profile_key, source, time, LABELS.get(variable, variable))
         self.chart.clear()
         self.chart.plot(self.profile.distance_m, self.profile.values, pen=pg.mkPen("#53cbf3", width=2))
-        self.chart.setLabel("bottom", "Distance", units="m")
-        self.chart.setLabel("left", LABELS.get(variable, variable))
-        stamp = f" · t = {time:.1f} s" if time is not None else ""
-        self.chart.setTitle(f"{feature['name']} · {LABELS.get(variable, variable)}{stamp}")
+        self.chart.setLabel("bottom", tr("Distance"), units="m")
+        self.chart.setLabel("left", tr(LABELS.get(variable, variable)))
+        stamp = trf(' · t = {0:.1f} s', time) if time is not None else ""
+        self.chart.setTitle(trf('{0} · {1}{2}', feature['name'], tr(LABELS.get(variable, variable)), stamp))
         self._save_sample_figure(self.chart, path)
 
     def _gauge_placed(self, x, y):
@@ -1384,8 +1402,8 @@ class MainWindow(QMainWindow):
             self.gauge = (data[0], data[1], variable, x, y, getattr(results, "root", None) or results.discovery.run_root)
             self.gauge_chart.clear()
             self.gauge_chart.plot(*data, pen=pg.mkPen("#53cbf3", width=2))
-            self.gauge_chart.setLabel("left", LABELS[variable])
-            self.gauge_chart.setTitle(f"{feature['name']} · E {x:.3f}, N {y:.3f}")
+            self.gauge_chart.setLabel("left", tr(LABELS[variable]))
+            self.gauge_chart.setTitle(trf('{0} · E {1:.3f}, N {2:.3f}', feature['name'], x, y))
             self._save_sample_figure(self.gauge_chart, path)
         self.global_stop.setEnabled(True)
         self.tasks.submit(lambda task: gauge_cached(path, results, feature, variable, task), done, passive=True)
@@ -1414,11 +1432,11 @@ class MainWindow(QMainWindow):
         from .analysis_shapes import store_feature
         try:
             number = sum(feature["kind"] == kind for feature in self.session.analysis_features)+1
-            feature = store_feature(self.session.workspace, kind, coords, f"{kind.title()} {number}", raster.crs_authid)
+            feature = store_feature(self.session.workspace, kind, coords, trf('{0} {1}', tr(kind.title()), number), raster.crs_authid)
             self.session.analysis_features.append(feature)
             self.session.dirty = True
             self._refresh_sampling_selectors(feature)
-            self._append_log(f"Saved {kind} shapefile: {feature['path']}")
+            self._append_log(trf('Saved {0} shapefile: {1}', tr(kind), feature['path']))
             return True
         except (OSError, ValueError, RuntimeError) as exc:
             self._error(str(exc))
@@ -1456,7 +1474,7 @@ class MainWindow(QMainWindow):
         if raster is None:
             self._error("Load terrain or results to set the sampling CRS first.")
             return
-        filename, _ = QFileDialog.getOpenFileName(self, "Load profiles or gauges", "", "Shapefile (*.shp)")
+        filename, _ = QFileDialog.getOpenFileName(self, tr("Load profiles or gauges"), "", tr("Shapefile (*.shp)"))
         if filename:
             from .analysis_shapes import read_shapes
             def done(features):
@@ -1470,15 +1488,15 @@ class MainWindow(QMainWindow):
     def save_sampling_shapes(self, kind):
         features = [f for f in self.session.analysis_features if f["kind"] == kind]
         if not features:
-            self._error(f"Create or load a {kind} first.")
+            self._error(trf('Create or load a {0} first.', tr(kind)))
             return
-        filename, _ = QFileDialog.getSaveFileName(self, f"Save {kind}s shapefile", f"{kind}s.shp", "Shapefile (*.shp)")
+        filename, _ = QFileDialog.getSaveFileName(self, trf('Save {0}s shapefile', tr(kind)), f"{kind}s.shp", tr("Shapefile (*.shp)"))
         if filename:
             from .analysis_shapes import write_shapes
             raster = self.current_raster or self.session.terrain.raster
             try:
                 path = write_shapes(Path(filename), features, raster.crs_authid)
-                self._append_log(f"Saved {len(features)} {kind}(s): {path}")
+                self._append_log(trf('Saved {0} {1}(s): {2}', len(features), tr(kind), path))
             except (ValueError, OSError, RuntimeError) as exc:
                 self._error(str(exc))
 
@@ -1487,37 +1505,37 @@ class MainWindow(QMainWindow):
         if (self.gauge if gauge_subject else self.profile) is None:
             self._error("Select a computed gauge first." if gauge_subject else "Select a computed profile first.")
             return
-        filename, _ = QFileDialog.getSaveFileName(self, "Export scientific samples", "samples.csv", "CSV (*.csv)")
+        filename, _ = QFileDialog.getSaveFileName(self, tr("Export scientific samples"), "samples.csv", tr("CSV (*.csv)"))
         if filename:
             if not gauge_subject:
                 write_profile_csv(filename, self.profile)
             else:
                 write_gauge(Path(filename), *self.gauge)
-            self._append_log(f"Exported {filename}")
+            self._append_log(trf('Exported {0}', filename))
 
     def export_raster(self):
         if self.current_raster is None:
             self._error("Select a result field or calculate an initial-state preview first.")
             return
-        filename, _ = QFileDialog.getSaveFileName(self, "Export current field (Float32 GeoTIFF)", "field.tif", "GeoTIFF (*.tif)")
+        filename, _ = QFileDialog.getSaveFileName(self, tr("Export current field (Float32 GeoTIFF)"), "field.tif", tr("GeoTIFF (*.tif)"))
         if filename:
             raster = self.current_raster
-            self.tasks.submit(lambda task: export_geotiff(Path(filename), raster), lambda _: self._append_log(f"Exported {filename}"))
+            self.tasks.submit(lambda task: export_geotiff(Path(filename), raster), lambda _: self._append_log(trf('Exported {0}', filename)))
 
     def export_png(self):
         if not self.map.terrain:
             return
-        filename, _ = QFileDialog.getSaveFileName(self, "Export current map extent with legend", "map.png", "PNG (*.png)")
+        filename, _ = QFileDialog.getSaveFileName(self, tr("Export current map extent with legend"), "map.png", tr("PNG (*.png)"))
         if filename:
             if not self.map.export_image().save(filename):
-                self._error(f"Cannot save map: {filename}")
+                self._error(trf('Cannot save map: {0}', filename))
 
     def export_figure(self):
         gauge = self.session.result_page == "gauges"
         if (self.gauge if gauge else self.profile) is None:
             self._error("Select a computed profile or gauge first.")
             return
-        filename, _ = QFileDialog.getSaveFileName(self, "Export figure", "gauge.png" if gauge else "profile.png", "PNG (*.png)")
+        filename, _ = QFileDialog.getSaveFileName(self, tr("Export figure"), "gauge.png" if gauge else "profile.png", tr("PNG (*.png)"))
         if filename:
             chart = self.gauge_chart if gauge else self.chart
             chart.grab().save(filename)
@@ -1532,7 +1550,7 @@ class MainWindow(QMainWindow):
         if page == "profiles" and self.profile is None:
             self._error("Select a computed profile first.")
             return
-        filename, _ = QFileDialog.getSaveFileName(self, "Export animation", {"analyze": "map.mp4", "profiles": "profile.mp4"}[page], "MP4 (*.mp4)")
+        filename, _ = QFileDialog.getSaveFileName(self, tr("Export animation"), {"analyze": "map.mp4", "profiles": "profile.mp4"}[page], tr("MP4 (*.mp4)"))
         if filename:
             self.start_video_export(Path(filename))
 
@@ -1583,14 +1601,14 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(0, video.deleteLater)
         def finished(filename):
             cleanup()
-            self.status_label.setText("MP4 exported")
-            self._append_log(f"Exported animation: {filename}")
+            self.status_label.setText(tr("MP4 exported"))
+            self._append_log(trf('Exported animation: {0}', filename))
         def failed(message):
             cleanup()
             self._error(message)
         video.finished.connect(finished)
         video.failed.connect(failed)
-        video.progress.connect(lambda done, total: (self.progress_bar.setRange(0, total), self.progress_bar.setValue(done), self.status_label.setText(f"Exporting MP4 · {done}/{total}")))
+        video.progress.connect(lambda done, total: (self.progress_bar.setRange(0, total), self.progress_bar.setValue(done), self.status_label.setText(trf('Exporting MP4 · {0}/{1}', done, total))))
         self.panels.setEnabled(False)
         self.navigation.setEnabled(False)
         self.horizontal.widget(0).setEnabled(False)
@@ -1603,7 +1621,7 @@ class MainWindow(QMainWindow):
 
     def edit_yaml(self):
         dialog = QDialog(self)
-        dialog.setWindowTitle("Advanced · complete AVAC YAML")
+        dialog.setWindowTitle(tr("Advanced · complete AVAC YAML"))
         dialog.resize(750, 750)
         layout = QVBoxLayout(dialog)
         layout.addWidget(muted("Edit existing scientific settings. Unknown advanced values are retained. Native output and boundaries remain the established production contract."))
@@ -1615,7 +1633,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(buttons)
         if dialog.exec() == QDialog.Accepted:
             try:
-                payload = yaml.safe_load(editor.toPlainText())
+                payload = normalize_mesh_configuration(yaml.safe_load(editor.toPlainText()))
                 self._apply_configuration(payload)
             except (ValueError, TypeError, KeyError, yaml.YAMLError) as exc:
                 self._error(str(exc))
@@ -1634,7 +1652,7 @@ class MainWindow(QMainWindow):
     def load_yaml(self):
         if not self._can_replace():
             return
-        filename, _ = QFileDialog.getOpenFileName(self, "Load complete AVAC configuration", "", "YAML (*.yaml *.yml)")
+        filename, _ = QFileDialog.getOpenFileName(self, tr("Load complete AVAC configuration"), "", tr("YAML (*.yaml *.yml)"))
         if filename:
             try:
                 self._apply_configuration(load_complete_configuration(filename))
@@ -1650,7 +1668,7 @@ class MainWindow(QMainWindow):
             return False
         path = None if as_new else self.session.project_path
         if path is None:
-            filename, _ = QFileDialog.getSaveFileName(self, "Save AVAC project", self.session.name+".avacproj", "AVAC project (*.avacproj)")
+            filename, _ = QFileDialog.getSaveFileName(self, tr("Save AVAC project"), self.session.name+".avacproj", tr("AVAC project (*.avacproj)"))
             if not filename:
                 return False
             path = Path(filename)
@@ -1685,7 +1703,7 @@ class MainWindow(QMainWindow):
     def _confirm_unsaved(self) -> bool:
         if not self.session.dirty or (not self.session.terrain and not self.session.project_path):
             return True
-        choice = QMessageBox.question(self, "Unsaved project", "Save project changes before continuing?", QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel)
+        choice = QMessageBox.question(self, tr("Unsaved project"), tr("Save project changes before continuing?"), QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel)
         return self.save() if choice == QMessageBox.Save else choice == QMessageBox.Discard
 
     def new_project(self):
@@ -1695,7 +1713,7 @@ class MainWindow(QMainWindow):
     def open_project(self):
         if not self._can_replace() or not self._confirm_unsaved():
             return
-        filename, _ = QFileDialog.getOpenFileName(self, "Open AVAC project", "", "AVAC project (*.avacproj)")
+        filename, _ = QFileDialog.getOpenFileName(self, tr("Open AVAC project"), "", tr("AVAC project (*.avacproj)"))
         if filename:
             self.open_project_path(Path(filename))
 
@@ -1731,7 +1749,7 @@ class MainWindow(QMainWindow):
 
     def _adopt(self, session):
         self.play_timer.stop()
-        self.play.setText("Play")
+        self.play.setText(tr("Play"))
         self.session = self.panels.session = session
         self.results, self.current_raster = None, None
         self._lake_rings = []
@@ -1755,25 +1773,25 @@ class MainWindow(QMainWindow):
         self.console.clear()
         self.chart.clear()
         self.gauge_chart.clear()
-        self.chart.setTitle("")
-        self.gauge_chart.setTitle("")
+        self.chart.setTitle(tr(""))
+        self.gauge_chart.setTitle(tr(""))
         self.slider.setRange(0, 0)
-        self.time_label.setText("No completed run selected")
+        self.time_label.setText(tr("No completed run selected"))
         self.variable.blockSignals(True)
         self.variable.clear()
         for key in ("depth", "velocity", "pressure", "snow_surface_elevation"):
-            self.variable.addItem(LABELS[key], key)
+            self.variable.addItem(tr(LABELS[key]), key)
         self.variable.blockSignals(False)
         self.run_button.setEnabled(False)
         self.run_button.setVisible(False)
         self.prepare_button.setVisible(True)
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
-        self.status_label.setText("Unconfigured")
-        self.panels.run_info.setText("Validate inputs, inspect an initial-state preview, then prepare a new isolated run.")
-        self.panels.analysis_info.setText("No completed run selected.")
-        self.panels.wave_info.setText("No lake or WAVE scenario selected.")
-        self.coordinate_label.setText("Import terrain to inspect coordinates and elevation.")
+        self.status_label.setText(tr("Unconfigured"))
+        self.panels.run_info.setText(tr("Validate inputs, inspect an initial-state preview, then prepare a new isolated run."))
+        self.panels.analysis_info.setText(tr("No completed run selected."))
+        self.panels.wave_info.setText(tr("No lake or WAVE scenario selected."))
+        self.coordinate_label.setText(tr("Import terrain to inspect coordinates and elevation."))
         self.panels.refresh()
         self.cpu.setValue(session.threads)
         self.wave_action.blockSignals(True)
@@ -1790,10 +1808,10 @@ class MainWindow(QMainWindow):
         self._update_project()
 
     def _append_log(self, text: str):
-        self.console.appendPlainText(text.rstrip())
+        self.console.appendPlainText(tr(text.rstrip()))
 
     def _error(self, text: str):
-        self.status_label.setText("Needs attention")
+        self.status_label.setText(tr("Needs attention"))
         self._append_log(text)
         self.bottom.setCurrentWidget(self.console)
         if self._console_collapsed:
@@ -1814,7 +1832,7 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
         if self.job.running:
-            choice = QMessageBox.question(self, "Simulation running", "Stop this simulation before closing? Its partial output will remain marked cancelled.", QMessageBox.Yes | QMessageBox.Cancel)
+            choice = QMessageBox.question(self, tr("Simulation running"), tr("Stop this simulation before closing? Its partial output will remain marked cancelled."), QMessageBox.Yes | QMessageBox.Cancel)
             if choice != QMessageBox.Yes:
                 event.ignore()
                 return

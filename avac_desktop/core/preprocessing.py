@@ -22,6 +22,7 @@ from .configuration import (
     RELEASE_DEPTH_DEFAULTS,
     apply_controlled_values,
     load_complete_configuration,
+    mesh_sizes, normalize_mesh_configuration,
     validate_grid_contract,
     validate_release_depth_parameters,
 )
@@ -114,15 +115,10 @@ def trim_raster_to_computational_grid(
     raster: AvacRaster,
     computational_cell_size: float,
 ) -> AvacRaster:
-    """Trim opposite DEM edges to fit a whole number of solver cells.
+    """Validate the DEM and spacing, preserving its original sample grid.
 
-    AVAC does not resample terrain during preparation.  When a computational
-    cell contains an integer number of source DEM cells but the source row or
-    column count is not divisible by that number, remove the minimum number
-    of source cells.  The removal is split as evenly as possible between the
-    two sides; for an odd remainder, the extra cell is removed from the upper
-    or right side.  This keeps the retained domain centered to within half a
-    source cell and preserves the original DEM samples exactly.
+    Solver boundaries are fitted independently by fit_computational_domain;
+    partial DEM border cells do not require resampling the source terrain.
     """
     metadata = raster.metadata
     try:
@@ -164,106 +160,43 @@ def trim_raster_to_computational_grid(
         if not np.allclose(raster.y, expected_y, rtol=0.0, atol=GRID_COUNT_TOLERANCE):
             raise ValueError("Selected DEM y coordinates do not match its outer extent and cell size.")
 
-    ratio = computational_cell / source_cell
-    cells_per_computation = round(ratio)
-    if cells_per_computation < 1 or not np.isclose(
-        ratio, cells_per_computation, rtol=0.0, atol=1e-8,
-    ):
-        raise ValueError(
-            "Source DEM cell size must equal or evenly subdivide the computational cell size; "
-            "AVAC does not silently resample terrain during preparation."
-        )
+    # Terrain samples and solver-cell edges are independent. Keep the DEM
+    # intact; configuration_for_raster fits whole solver cells inside it.
+    return raster
 
-    trim_x, trim_y = ncols % cells_per_computation, nrows % cells_per_computation
-    if trim_x == 0 and trim_y == 0:
-        return raster
-    retained_ncols, retained_nrows = ncols - trim_x, nrows - trim_y
-    if retained_ncols < cells_per_computation or retained_nrows < cells_per_computation:
-        raise ValueError(
-            f"Selected DEM ({ncols} x {nrows} cells) is too small for a "
-            f"{computational_cell:g} m AVAC grid after edge trimming."
-        )
 
-    west = trim_x // 2
-    east = trim_x - west
-    south = trim_y // 2
-    north = trim_y - south
-    column_stop = ncols - east if east else ncols
-    row_stop = nrows - north if north else nrows
-    trimmed_metadata = dict(metadata)
-    trimmed_metadata.update({
-        "xmin": xmin + west * source_cell,
-        "xmax": xmax - east * source_cell,
-        "ymin": ymin + south * source_cell,
-        "ymax": ymax - north * source_cell,
-        "ncols": retained_ncols,
-        "nrows": retained_nrows,
-    })
-    if metadata_only:
-        return AvacRaster(
-            raster.x, raster.y, raster.z, trimmed_metadata, raster.crs_authid, raster.band,
-        )
-    return AvacRaster(
-        raster.x[west:column_stop],
-        raster.y[south:row_stop],
-        raster.z[south:row_stop, west:column_stop],
-        trimmed_metadata,
-        raster.crs_authid,
-        raster.band,
-    )
+def fit_computational_domain(bounds, cell_size):
+    """Crop less than one solver cell per axis, equally at both boundaries."""
+    cell = float(cell_size)
+    if not np.isfinite(cell) or cell <= 0:
+        raise ValueError('Mesh cell size must be positive and finite.')
+    result = {}
+    for axis in ('x', 'y'):
+        lo, hi = float(bounds[axis+'min']), float(bounds[axis+'max'])
+        if not np.isfinite([lo, hi]).all() or hi <= lo:
+            raise ValueError('Invalid computational domain bounds.')
+        count = int(np.floor((hi-lo)/cell + GRID_COUNT_TOLERANCE))
+        if count < 2:
+            raise ValueError(f'Domain must contain at least two {cell:g} m cells on each axis.')
+        lower = lo + max(0., (hi-lo-count*cell)/2)
+        result[axis+'min'], result[axis+'max'] = lower, lower+count*cell
+    return result
 
 
 def configuration_for_raster(configuration: dict[str, Any], raster: AvacRaster) -> dict[str, Any]:
-    """Return a configuration whose computational domain is covered by ``raster``.
-
-    A QGIS raster represents a rectangular set of physical cells. GeoClaw reads
-    topotype-3 values as nodal samples after shifting an ESRI ``xllcorner`` to
-    its first sample centre.  :func:`prepare_inputs` therefore supplies an
-    extra, topography-only edge halo for the retained domain.
-
-    A computational cell must contain an integer number of source DEM cells.
-    If the source dimensions are not divisible by that integer, the smallest
-    possible number of source cells is trimmed and shared between opposite
-    sides. The solver, terrain, release, qinit, and result domains then use the
-    same retained rectangle.
-    """
-    result = deepcopy(configuration)
-    try:
-        computational_cell = float(result["computation"]["cell_size"])
-    except (KeyError, TypeError, ValueError, OverflowError) as exc:
-        raise ValueError(f"Cannot derive an AVAC domain from the selected DEM: {exc}") from exc
+    """Fit a centred whole-cell base grid inside the original DEM bounds."""
+    result = normalize_mesh_configuration(configuration)
+    finest, computational_cell, levels = mesh_sizes(result)
     raster = trim_raster_to_computational_grid(raster, computational_cell)
     metadata = raster.metadata
-    try:
-        source_cell = float(metadata["cellsize"])
-        ncols, nrows = int(metadata["ncols"]), int(metadata["nrows"])
-        xmin, xmax = float(metadata["xmin"]), float(metadata["xmax"])
-        ymin, ymax = float(metadata["ymin"]), float(metadata["ymax"])
-    except (KeyError, TypeError, ValueError, OverflowError) as exc:
-        raise ValueError(f"Cannot derive an AVAC domain from the selected DEM: {exc}") from exc
-    if not np.isfinite(source_cell) or source_cell <= 0 or not np.isfinite(computational_cell) or computational_cell <= 0:
-        raise ValueError("DEM and computational cell sizes must be positive finite values.")
-    if ncols < 1 or nrows < 1:
-        raise ValueError("Selected DEM must contain at least one row and one column.")
-    if not all(np.isfinite(value) for value in (xmin, xmax, ymin, ymax)):
-        raise ValueError("Selected DEM outer extent must contain finite coordinates.")
-    if (
-        not np.isclose((xmax - xmin) / source_cell, ncols, rtol=0.0, atol=GRID_COUNT_TOLERANCE)
-        or not np.isclose((ymax - ymin) / source_cell, nrows, rtol=0.0, atol=GRID_COUNT_TOLERANCE)
-    ):
-        raise ValueError(
-            "Selected DEM edges, dimensions, and cell size do not describe one regular cell-centred grid."
-        )
-    ratio = computational_cell / source_cell
-    cells_per_computation = round(ratio)
-    if cells_per_computation < 1 or not np.isclose(ratio, cells_per_computation, rtol=0.0, atol=1e-8):
-        raise ValueError(
-            "Source DEM cell size must equal or evenly subdivide the computational cell size; "
-            "AVAC does not silently resample terrain during preparation."
-        )
-    if ncols % cells_per_computation or nrows % cells_per_computation:  # pragma: no cover - helper invariant
-        raise ValueError("Internal error while trimming the selected DEM to the AVAC grid.")
-    nx, ny = ncols // cells_per_computation, nrows // cells_per_computation
+    ncols, nrows = int(metadata['ncols']), int(metadata['nrows'])
+    domain = fit_computational_domain(metadata, computational_cell)
+    xmin, xmax, ymin, ymax = (domain[key] for key in ('xmin', 'xmax', 'ymin', 'ymax'))
+    nx = int(round((xmax-xmin)/computational_cell))
+    ny = int(round((ymax-ymin)/computational_cell))
+    result['result_grid'] = dict(cell_size=finest, ncols=nx*2**(levels-1),
+                                 nrows=ny*2**(levels-1), xllcenter=xmin+.5*finest,
+                                 yllcenter=ymin+.5*finest)
     # GeoClaw FGmax point_style=2 uses the first and last sample coordinates
     # to derive spacing with (n-1).  QGIS also needs two centre coordinates
     # per axis to reconstruct a raster envelope.  Reject a domain that could

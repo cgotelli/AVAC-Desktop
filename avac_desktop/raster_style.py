@@ -1,4 +1,5 @@
 """Display-only colour ramps and raster style editor."""
+from .i18n import tr, trf, tr_list, number, parse_number
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
                                QDoubleSpinBox, QFormLayout, QLabel, QSpinBox)
 
@@ -15,41 +16,42 @@ class RasterStyleDialog(QDialog):
     def __init__(self, view):
         super().__init__(view)
         self.view = view
-        self.setWindowTitle("Raster appearance")
+        self.setWindowTitle(tr("Raster appearance"))
         form = QFormLayout(self)
         self.layer = QComboBox()
-        self.layer.addItem("Terrain", "terrain")
+        self.layer.addItem(tr("Terrain"), "terrain")
         if view.field_raster is not None:
-            self.layer.addItem(view.field_label, view.field_label)
+            self.layer.addItem(tr(view.field_label), view.field_label)
         for label in view.additional_fields:
-            self.layer.addItem(label, label)
-        form.addRow("Layer", self.layer)
+            self.layer.addItem(tr(label), label)
+        form.addRow(tr("Layer"), self.layer)
         self.palette = QComboBox()
-        self.palette.addItems(PALETTES)
-        form.addRow("Palette", self.palette)
-        self.automatic = QCheckBox("Use data range")
-        form.addRow(self.automatic)
+        for key in PALETTES:
+            self.palette.addItem(tr(key), key)
+        form.addRow(tr("Palette"), self.palette)
+        self.automatic = QCheckBox(tr("Use data range"))
+        form.addRow(tr(self.automatic))
         self.low, self.high = QDoubleSpinBox(), QDoubleSpinBox()
         for spin in (self.low, self.high):
             spin.setRange(-1e15, 1e15)
             spin.setDecimals(8)
-        form.addRow("Minimum", self.low)
-        form.addRow("Maximum", self.high)
-        self.zero = QCheckBox("Exactly zero is transparent")
-        form.addRow(self.zero)
-        self.legend = QCheckBox("Show this layer's legend")
-        form.addRow(self.legend)
+        form.addRow(tr("Minimum"), self.low)
+        form.addRow(tr("Maximum"), self.high)
+        self.zero = QCheckBox(tr("Exactly zero is transparent"))
+        form.addRow(tr(self.zero))
+        self.legend = QCheckBox(tr("Show this layer's legend"))
+        form.addRow(tr(self.legend))
         self.opacity = QSpinBox()
         self.opacity.setRange(0, 100)
-        self.opacity.setSuffix(" %")
-        form.addRow("Layer opacity", self.opacity)
+        self.opacity.setSuffix(tr(" %"))
+        form.addRow(tr("Layer opacity"), self.opacity)
         self.error = QLabel()
         self.error.setWordWrap(True)
-        form.addRow(self.error)
+        form.addRow(tr(self.error))
         buttons = QDialogButtonBox(QDialogButtonBox.Apply | QDialogButtonBox.Close)
         buttons.button(QDialogButtonBox.Apply).clicked.connect(self.apply)
         buttons.rejected.connect(self.reject)
-        form.addRow(buttons)
+        form.addRow(tr(buttons))
         self.automatic.toggled.connect(lambda checked: (self.low.setEnabled(not checked), self.high.setEnabled(not checked)))
         self.layer.currentIndexChanged.connect(self.load)
         self.load()
@@ -57,7 +59,7 @@ class RasterStyleDialog(QDialog):
     def load(self):
         key = self.layer.currentData()
         style = self.view.styles.get(key, {})
-        self.palette.setCurrentText(style.get("palette", self.view.default_palette(key)))
+        self.palette.setCurrentIndex(self.palette.findData(style.get("palette", self.view.default_palette(key))))
         low, high = self.view.range_for(key)
         limits = style.get("limits")
         self.automatic.setChecked(limits is None)
@@ -71,11 +73,11 @@ class RasterStyleDialog(QDialog):
 
     def apply(self):
         if not self.automatic.isChecked() and self.high.value() <= self.low.value():
-            self.error.setText("Maximum must be greater than minimum.")
+            self.error.setText(tr("Maximum must be greater than minimum."))
             return
-        self.view.styles[self.layer.currentData()] = dict(palette=self.palette.currentText(),
+        self.view.styles[self.layer.currentData()] = dict(palette=self.palette.currentData(),
             limits=None if self.automatic.isChecked() else [self.low.value(), self.high.value()],
             zero_transparent=self.zero.isChecked(), opacity=self.opacity.value()/100, legend_visible=self.legend.isChecked())
         self.view.refresh_styles()
         self.view.styles_changed.emit()
-        self.error.setText("Applied. Scientific raster values are unchanged.")
+        self.error.setText(tr("Applied. Scientific raster values are unchanged."))

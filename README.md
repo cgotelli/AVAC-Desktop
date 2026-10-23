@@ -21,6 +21,10 @@ scientific services and solver sources originated.
 - Keep inputs, configuration, sampling geometry and results together in a
   project folder. Completed results reopen automatically with the project.
 - Use light or dark appearance, hillshade and optional online map backgrounds.
+- Choose English, French, Spanish, Italian or German and a decimal point or
+  comma in Settings; both choices are remembered.
+- Set the smallest mesh size, AVAC AMR levels and refinement update interval.
+  WAVE uses a uniform mesh at the smallest size.
 
 This is an early preview. Windows 11 x64 on Intel/AMD is the current target;
 Linux, macOS and Windows ARM distributions are not provided. Scientific results
@@ -30,7 +34,7 @@ need independent validation. Read [limitations](docs/LIMITATIONS.md) and the
 ## Windows installer
 
 Download the setup EXE and its SHA-256 checksum from
-[the latest preview release](https://github.com/cgotelli/AVAC-Desktop/releases/tag/v0.1.5-preview.1).
+[the latest preview release](https://github.com/cgotelli/AVAC-Desktop/releases/tag/v0.1.7-preview.1).
 The offline installer includes Python, GIS/UI libraries and both native solvers.
 It is unsigned; Windows may show an unknown-publisher notice.
 

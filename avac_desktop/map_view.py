@@ -1,6 +1,7 @@
 """Georeferenced native Qt raster viewport with a bounded display overview."""
 from __future__ import annotations
 
+from .i18n import tr, trf, tr_list, number, parse_number
 import math
 from copy import deepcopy
 import numpy as np
@@ -134,7 +135,7 @@ class MapView(QGraphicsView):
         self.model_tools = True
         self.terrain_low, self.terrain_high = 0., 1.
         self._build_controls()
-        self.attribution = QLabel(self.viewport())
+        self.attribution = QLabel(tr(self.viewport()))
         self.attribution.setOpenExternalLinks(True)
         self.attribution.setStyleSheet(f"background: {LEGEND_BLUE}; color: #f0f7fc; padding: 4px; font-size: 10px;")
         from .basemap import Basemap
@@ -166,23 +167,23 @@ class MapView(QGraphicsView):
             ("cancel", "×", "Cancel drawing / clear selection (Escape)", lambda: self.set_tool("pan"))):
             button = QToolButton()
             button.setObjectName("MapControl")
-            button.setText(symbol)
+            button.setText(tr(symbol))
             if key == "delete":
                 button.setIcon(bin_icon())
                 button.setIconSize(QSize(24, 24))
             button.setFixedSize(36, 36)
-            button.setToolTip(hint)
-            button.setAccessibleName(hint)
+            button.setToolTip(tr(hint))
+            button.setAccessibleName(tr(hint))
             if key in ("pan", "select", "polygon", "line", "edit"):
                 button.setCheckable(True)
             button.clicked.connect(callback)
             self.tool_buttons[key] = button
             (navigation if key in ("zoom_in", "zoom_out", "pan", "select") else geometry).addWidget(button)
         self.style_button = QToolButton(self.navigation_controls)
-        self.style_button.setText("◐")
+        self.style_button.setText(tr("◐"))
         self.style_button.setObjectName("MapControl")
         self.style_button.setFixedSize(36, 36)
-        self.style_button.setToolTip("Raster palettes, limits and zero transparency")
+        self.style_button.setToolTip(tr("Raster palettes, limits and zero transparency"))
         self.style_button.clicked.connect(self.edit_raster_style)
         navigation.addWidget(self.style_button)
         self.set_tool("pan")
@@ -376,7 +377,7 @@ class MapView(QGraphicsView):
             self.mesh_items = []
             for layer in layers:
                 item = MeshItem(layer, origin)
-                self.scene().addItem(item)
+                self.scene().addItem(tr(item))
                 self.mesh_items.append(item)
         else:
             for item, layer in zip(self.mesh_items, layers):
@@ -418,7 +419,7 @@ class MapView(QGraphicsView):
             width = metrics.horizontalAdvance(credits)+16
             painter.fillRect(QRectF(8, 8, width, metrics.height()+8), QColor(LEGEND_BLUE))
             painter.setPen(QColor("white"))
-            painter.drawText(16, 12+metrics.ascent(), credits)
+            painter.drawText(16, 12+metrics.ascent(), tr(credits))
         painter.end()
         return image
 
@@ -531,10 +532,10 @@ class MapView(QGraphicsView):
         if self.terrain:
             x, y = self.from_scene(self.mapToScene(event.position().toPoint()))
             hit = probe(self.field_raster or self.terrain.raster, x, y)
-            text = f"E {x:,.2f}  N {y:,.2f}  |  {self.terrain.raster.crs_authid or 'Unreferenced XY [m]'}"
+            text = trf('E {0:,.2f}  N {1:,.2f}  |  {2}', x, y, self.terrain.raster.crs_authid or tr('Unreferenced XY [m]'))
             if hit:
                 row, col, value = hit
-                text += f"  |  cell ({row}, {col})  ·  {value:.8g}" if np.isfinite(value) else "  |  NoData"
+                text += trf('  |  cell ({0}, {1})  ·  {2:.8g}', row, col, value) if np.isfinite(value) else "  |  NoData"
             self.coordinate.emit(text)
         super().mouseMoveEvent(event)
         if self.tool == "pan":
@@ -665,7 +666,7 @@ class MapView(QGraphicsView):
                 item.setFlag(item.GraphicsItemFlag.ItemIgnoresTransformations)
                 item.setPos(self.to_scene(*points[0]))
             item.setZValue(6)
-            item.setToolTip(feature["name"])
+            item.setToolTip(tr(feature["name"]))
             item.setData(0, feature["kind"])
             item.setVisible(self.analysis_visibility.get(feature["kind"], True))
             self.analysis_items.append(item)
@@ -759,7 +760,7 @@ class MapView(QGraphicsView):
             painter.setBrush(QColor(LEGEND_BLUE))
             painter.drawRoundedRect(QRectF(0, 0, 44, 76), 6, 6)
             painter.setPen(QColor("#ffffff"))
-            painter.drawText(QRectF(0, 3, 44, 22), Qt.AlignCenter, "N")
+            painter.drawText(QRectF(0, 3, 44, 22), Qt.AlignCenter, tr("N"))
             needle = QPainterPath(QPointF(22, 26))
             needle.lineTo(13, 61)
             needle.lineTo(22, 54)
@@ -778,7 +779,7 @@ class MapView(QGraphicsView):
             painter.setPen(Qt.NoPen)
             painter.drawRoundedRect(QRectF(w/2-width/2, 12, width, 28), 5, 5)
             painter.setPen(QColor("#ffffff"))
-            painter.drawText(QRectF(w/2-width/2, 12, width, 28), Qt.AlignCenter, self.time_text)
+            painter.drawText(QRectF(w/2-width/2, 12, width, 28), Qt.AlignCenter, tr(self.time_text))
         from PySide6.QtGui import QLinearGradient
         legends = [("terrain", "Terrain elevation [m]", self.terrain_low, self.terrain_high)]
         if self.field_item is not None:
@@ -793,7 +794,8 @@ class MapView(QGraphicsView):
         padding, gap, ramp_height = 8, 4, 6
         panel_height = padding*2 + metrics.height()*2 + gap*2 + ramp_height
         for index, (key, title, low, high) in enumerate(legends):
-            low_text, high_text = f"{low:.4g}", f"{high:.4g}"
+            title = tr(title)
+            low_text, high_text = trf('{0:.4g}', low), trf('{0:.4g}', high)
             panel_width = max(174, metrics.horizontalAdvance(title)+padding*2,
                               metrics.horizontalAdvance(low_text)+metrics.horizontalAdvance(high_text)+padding*2+24)
             bottom = h-16-index*(panel_height+8)
@@ -809,14 +811,14 @@ class MapView(QGraphicsView):
             painter.setBrush(backing)
             painter.drawRoundedRect(QRectF(left, top, panel_width, panel_height), 5, 5)
             painter.setPen(QColor("#dfeefa"))
-            painter.drawText(content_left, title_baseline, title)
+            painter.drawText(content_left, title_baseline, tr(title))
             gradient = QLinearGradient(content_left, 0, content_left+content_width, 0)
             colors = PALETTES.get(self.styles.get(key, {}).get("palette", self.default_palette(key)), PALETTES["Terrain"])
             for i, color in enumerate(colors):
                 gradient.setColorAt(i/(len(colors)-1), QColor(color))
             painter.fillRect(QRectF(content_left, ramp_top, content_width, ramp_height), gradient)
-            painter.drawText(content_left, values_baseline, low_text)
-            painter.drawText(content_left+content_width-metrics.horizontalAdvance(high_text), values_baseline, high_text)
+            painter.drawText(content_left, values_baseline, tr(low_text))
+            painter.drawText(content_left+content_width-metrics.horizontalAdvance(high_text), values_baseline, tr(high_text))
         if not self.decorations.get("scale", True):
             painter.restore()
             return
@@ -825,7 +827,7 @@ class MapView(QGraphicsView):
         power = 10**math.floor(math.log10(raw))
         length = max(1, math.floor(raw/power))*power
         pixels = length/metres_per_pixel
-        scale_text = f"{length:g} m"
+        scale_text = trf('{0:g} m', length)
         scale_width = max(pixels, metrics.horizontalAdvance(scale_text))
         scale_left = w-16-scale_width-padding*2
         scale_line_y = h-16-padding
@@ -838,5 +840,5 @@ class MapView(QGraphicsView):
         painter.drawRoundedRect(QRectF(scale_left, scale_top, scale_width+padding*2, h-16-scale_top), 5, 5)
         painter.setPen(QPen(QColor("#d9e7f1"), 2))
         painter.drawLine(QPointF(scale_left+padding, scale_line_y), QPointF(scale_left+padding+pixels, scale_line_y))
-        painter.drawText(QPointF(scale_left+padding, scale_baseline), scale_text)
+        painter.drawText(QPointF(scale_left+padding, scale_baseline), tr(scale_text))
         painter.restore()

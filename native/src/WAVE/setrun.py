@@ -295,15 +295,15 @@ def setrun(claw_pkg='geoclaw'):
     # Patch size includes the two-cell halo. Larger single-level patches
     # reduce ghost and scheduling work while keeping the same physical mesh.
     # Preserve GeoClaw's established patch partitioning for multilevel AMR.
-    amrdata.max1d = 250 if int(computation['refinement']) == 1 else 60
+    amrdata.max1d = 250
 
     # max number of refinement levels:
-    amrdata.amr_levels_max = computation['refinement']
+    amrdata.amr_levels_max = 1
 
     # List of refinement ratios at each level (length at least mxnest-1)
-    amrdata.refinement_ratios_x = [10,5,2]
-    amrdata.refinement_ratios_y = [10,5,2]
-    amrdata.refinement_ratios_t = [10,5,2]
+    amrdata.refinement_ratios_x = [2]
+    amrdata.refinement_ratios_y = [2]
+    amrdata.refinement_ratios_t = [2]
 
     # Specify type of each aux variable in amrdata.auxtype.
     # This must be a list of length maux, each element of which is one of:

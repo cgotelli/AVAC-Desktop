@@ -31,6 +31,7 @@ c
       subroutine flagger(nvar,naux,lcheck,start_time)
 
       use amr_module
+      use geoclaw_module, only: grav, dry_tolerance
       use adjoint_module,only:calculate_tol,eptr,errors,totnum_adjoints,
      1      adjoints,trange_start,trange_final,adjoint_flagging,grid_num
       implicit double precision (a-h,o-z)
@@ -39,8 +40,57 @@ c
       integer mythread/0/, maxthreads/1/
       integer listgrids(numgrids(lcheck)), locuse
       logical keepflagging
+      integer(kind=8) :: flag_storage
+      real(kind=8) :: travel_speed, depth, velocity, travel_cells
 
 c      call prepgrids(listgrids,numgrids(lcheck),lcheck)
+c     Allow the refined footprint to move between physical-time updates.
+c     Include gravity-wave propagation and a gravity acceleration allowance.
+c     Only AVAC enables this interval; WAVE retains its uniform mesh.
+      if (avac_regrid_seconds > 0.d0) then
+          travel_speed = 0.d0
+          mptr = lstart(lcheck)
+          do while (mptr /= 0)
+              nx = node(ndihi,mptr)-node(ndilo,mptr)+1
+              ny = node(ndjhi,mptr)-node(ndjlo,mptr)+1
+              mitot = nx+2*nghost
+              locnew = node(store1,mptr)
+              if (rnode(timemult,mptr) == start_time+possk(lcheck))
+     &            locnew = node(store2,mptr)
+              do j=1,ny
+                  do i=1,nx
+                      loc = locnew+nvar*((j+nghost-1)*mitot+
+     &                                  i+nghost-1)
+                      depth = alloc(loc)
+                      if (depth <= dry_tolerance) cycle
+                      velocity = sqrt(alloc(loc+1)**2+
+     &                                alloc(loc+2)**2)/depth
+                      travel_speed = max(travel_speed,
+     &                    velocity+sqrt(grav*depth))
+                  enddo
+              enddo
+              mptr = node(levelptr,mptr)
+          enddo
+          travel_cells = (travel_speed*avac_regrid_seconds+
+     &        0.5d0*grav*avac_regrid_seconds**2)/
+     &        min(hxposs(lcheck),hyposs(lcheck))
+          ibuff = max(2,ceiling(min(travel_cells,
+     &        max((xupper-xlower)/hxposs(lcheck),
+     &            (yupper-ylower)/hyposs(lcheck)))))
+          flag_storage = 0
+          mptr = lstart(lcheck)
+          do while (mptr /= 0)
+              nx = node(ndihi,mptr)-node(ndilo,mptr)+1
+              ny = node(ndjhi,mptr)-node(ndjlo,mptr)+1
+              flag_storage = flag_storage + 8_8*
+     &            (nx+2_8*max(nghost,ibuff+1))*
+     &            (ny+2_8*max(nghost,ibuff+1))
+              mptr = node(levelptr,mptr)
+          enddo
+          if (flag_storage > 512_8*1024_8*1024_8) then
+              error stop 'AMR buffer too large: reduce update interval'
+          endif
+      endif
       mbuff = max(nghost,ibuff+1)
 
       if(adjoint_flagging) then

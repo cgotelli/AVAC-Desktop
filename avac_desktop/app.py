@@ -17,7 +17,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     app = QApplication.instance() or QApplication(sys.argv[:1])
     app.setApplicationName('AVAC Desktop')
+    from . import __version__
+    app.setApplicationVersion(__version__)
     app.setOrganizationName('AVAC')
+    from .i18n import configure
+    configure(app)
     from PySide6.QtGui import QIcon
     app.setWindowIcon(QIcon(str(resource_root()/'avac_desktop/resources/AVAC_app_icon.png')))
     if sys.platform == 'win32':

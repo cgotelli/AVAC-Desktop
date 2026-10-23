@@ -152,3 +152,9 @@ cache inside the run folder, not a project input replacement. Execution
 integrity manifests additionally store optional `compatibility_inputs` hashes
 for the ASCII partners; older manifests without this field remain readable.
 Keep the whole run/project folder together as usual.
+
+Mesh configuration now stores `computation.cell_size_reference: finest` and
+`computation.regrid_seconds` (default 5 s). Loading older YAML converts its
+base cell size to the previous finest spacing; saving records that migration.
+New preparation uses fixed 1:2 AVAC ratios and uniform WAVE cells at the same
+finest spacing. Completed results retain their original grids and run files.

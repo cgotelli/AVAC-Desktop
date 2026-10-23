@@ -32,6 +32,7 @@ c
       type(fgrid), pointer :: fg
       type(fgout_grid), pointer :: fgout
       logical :: debug
+      real(kind=8) :: next_avac_regrid, regrid_epsilon, regrid_target
 
 c
 c :::::::::::::::::::::::::::: TICK :::::::::::::::::::::::::::::
@@ -62,6 +63,12 @@ c ::::::::::::::::::::::::::::::::::::;::::::::::::::::::::::::::
 c
 
 
+      next_avac_regrid = rinfinity
+      regrid_epsilon = 1.d-10
+      if (avac_regrid_seconds > 0.d0 .and. mxnest > 1) then
+          next_avac_regrid = t0 +
+     &      (floor((time-t0)/avac_regrid_seconds)+1)*avac_regrid_seconds
+      endif
       ncycle         = nstart
       call setbestsrc()     ! need at very start of run, including restart
       if (iout .eq. 0) then
@@ -122,6 +129,14 @@ c
          chktime       = rinfinity
       endif
 
+c     Land on physical regrid times independently of output frequency.
+      if (time < next_avac_regrid .and.
+     &    time+possk(1) > next_avac_regrid) then
+          possk(1) = next_avac_regrid-time
+          do i=2,mxnest
+              possk(i) = possk(i-1)/kratio(i-1)
+          enddo
+      endif
       dumpout = .false.  !# may be reset below
 
       if (time.lt.outtime .and. time+1.001*possk(1) .ge. outtime) then
@@ -168,6 +183,21 @@ c        ## adjust time step  to hit chktime exactly, and do checkpointing
         dumpchk = .false.
       endif
 
+c     Output/checkpoint adjustments must not step past an AMR deadline.
+c     At a deadline, this step will regrid first and target the next one.
+      if (avac_regrid_seconds > 0.d0 .and. mxnest > 1) then
+          regrid_target = next_avac_regrid
+          if (time >= regrid_target-regrid_epsilon)
+     &        regrid_target = regrid_target+avac_regrid_seconds
+          if (time+possk(1) > regrid_target) then
+              possk(1) = regrid_target-time
+              do i=2,mxnest
+                  possk(i) = possk(i-1)/kratio(i-1)
+              enddo
+              if (outtime > regrid_target) dumpout = .false.
+              if (chktime > regrid_target) dumpchk = .false.
+          endif
+      endif
 c
       level        = 1
       ntogo(level) = 1
@@ -203,6 +233,15 @@ c        previous time step needs boundary vals for giant step.
 c  no error estimation on finest possible grid level
 c
  60       continue
+          if (avac_regrid_seconds > 0.d0) then
+c             All levels are synchronized at the start of a base step.
+              if (level /= 1 .or. mxnest <= 1) go to 90
+              if (time < next_avac_regrid-regrid_epsilon) go to 90
+              lbase = 1
+              next_avac_regrid = next_avac_regrid+avac_regrid_seconds
+              write(*,*) 'AVAC AMR update at t = ', time
+              go to 65
+          endif
           if (icheck(level) .ge. kcheck) then
                lbase = level
           else if (level+1 .ge. mxnest) then
@@ -216,6 +255,7 @@ c
           else
                go to 90
           endif
+ 65       continue
           if (lbase .eq. mxnest .or. lbase .gt. lfine) go to 70
 c
 c regrid level 'lbase+1' up to finest level.

@@ -7,6 +7,8 @@ animation:
 computation:
   boundary: extrap
   cell_size: 2
+  cell_size_reference: finest
+  regrid_seconds: 5.0
   cfl_max: 1
   cfl_target: 0.5
   dry_limit: 0.0001

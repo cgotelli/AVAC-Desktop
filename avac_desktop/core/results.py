@@ -81,6 +81,35 @@ def _fgout_time(path: Path) -> float:
         raise ValueError(f"Invalid fgout time metadata: {path}") from exc
 
 
+def validate_fgout_geometry(output: Path, grid: int, frame: int) -> None:
+    """Reject collapsed legacy output grids before invoking the Clawpack reader.
+
+    The eight-line patch header is shared by binary and ASCII 2D FGout.
+    Older Windows libgfortran builds could truncate scientific notation after
+    binary input on decimal-comma systems, even when the solver completed.
+    Changing these headers cannot recover the incorrectly sampled results.
+    """
+    path = output / f"fgout{grid:04d}.q{frame:04d}"
+    try:
+        with path.open(encoding="utf-8") as stream:
+            values = [float(stream.readline().split()[0]) for _ in range(8)]
+        _, _, nx, ny, x, y, dx, dy = values
+        valid = (all(np.isfinite(values)) and nx >= 1 and ny >= 1
+                 and nx == int(nx) and ny == int(ny) and dx > 0 and dy > 0
+                 and np.isfinite(x + nx*dx) and np.isfinite(y + ny*dy)
+                 and x + nx*dx > x and y + ny*dy > y)
+    except (OSError, ValueError, IndexError):
+        valid = False
+    if not valid:
+        raise ValueError(
+            "Saved results have an invalid output grid. Older Windows runtimes "
+            "could cause this with French or other decimal-comma regional settings. "
+            "Use the updated application to prepare and run a new simulation; "
+            "the existing result files cannot be repaired by changing their coordinates. "
+            f"Original files are unchanged: {path}"
+        )
+
+
 def _configuration(avac_dir: Path) -> dict[str, Any]:
     try:
         payload = yaml.safe_load((avac_dir / "AVAC_configuration.yaml").read_text(encoding="utf-8")) or {}
@@ -128,6 +157,7 @@ def discover_results(run_root: str | Path, fgout_grid: int = 1, fgmax_grid: int 
         raise ValueError(f"No complete {grid_name} frames found in {output_dir}")
     if any(not np.isfinite(frame.time_seconds) for frame in frames):
         raise ValueError("fgout frame times must be finite.")
+    validate_fgout_geometry(output_dir, fgout_grid, frames[0].frame_id)
     config_rho = configuration.get("rheology", {}).get("rho", 300.0)
     fgmax_path = output_dir / f"fgmax{fgmax_grid:04d}.txt"
     if not fgmax_path.is_file():

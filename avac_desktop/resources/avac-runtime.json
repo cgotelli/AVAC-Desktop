@@ -1,11 +1,12 @@
 {
   "kind": "AVAC",
   "platform": "windows-amd64",
-  "runtime_version": "0.1.5",
-  "archive": "avac-desktop-windows-amd64-0.1.5.tar.gz",
-  "runtime_manifest_sha256": "09cfc6fa26551fa0d7c2d6f22675c45accd9264e141f20e39dde042a85a2aabd",
+  "runtime_version": "0.1.6-dev4",
+  "archive": "avac-desktop-windows-amd64-0.1.6-dev4.tar.gz",
+  "runtime_manifest_sha256": "24ef451e1629e6615bd0210b4662fb92461135ff74902d47eaad3ec60f4c7b94",
   "source_repository": "https://github.com/cgotelli/AVAC-Desktop",
-  "source_tree_sha256": "b2d5ab62d8133295c8f8eed1072bfe0f20a29a17d6211ae8726df75282cf10c3",
+  "source_tree_sha256": "3285595075867fb4afa26ddba99a18fca7ffe40d91ffc3ae8bac69c05b714fac",
   "python_layout": "compact-clawpack-packages-v1",
-  "build_toolchain": "WinLibs GCC 13.2.0 / MinGW-w64 11.0.1 UCRT POSIX SEH r8"
+  "build_toolchain": "WinLibs GCC 13.2.0 / MinGW-w64 11.0.1 UCRT POSIX SEH r8",
+  "runtime_libraries": "MSYS2 UCRT GCC 16.2.0-6 with libgfortran locale fix; winpthreads 14.0.0.r495.g63ebe6cdb-2; dlfcn-win32 1.4.1"
 }

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "avac-desktop"
-version = "0.1.5"
+version = "0.1.7"
 description = "Standalone desktop application for avalanche and impulse-wave modelling"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
@@ -26,4 +26,4 @@ Issues = "https://github.com/cgotelli/AVAC-Desktop/issues"
 include = ["avac_desktop*"]
 
 [tool.setuptools.package-data]
-avac_desktop = ["resources/*.json", "resources/*.yaml", "resources/*.png", "resources/*.svg", "resources/*.tar.gz"]
+avac_desktop = ["resources/*.json", "resources/*.yaml", "resources/*.png", "resources/*.svg", "resources/*.tar.gz", "resources/translations/*.json", "resources/legal/*.txt"]

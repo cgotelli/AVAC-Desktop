@@ -1,11 +1,12 @@
 {
   "kind": "WAVE",
   "platform": "windows-amd64",
-  "runtime_version": "0.1.5",
-  "archive": "wave-desktop-windows-amd64-0.1.5.tar.gz",
-  "runtime_manifest_sha256": "6b8cf41ce275c40afab61be544aa823685a50dd095c0f4bd5ce5397211f43998",
+  "runtime_version": "0.1.6-dev4",
+  "archive": "wave-desktop-windows-amd64-0.1.6-dev4.tar.gz",
+  "runtime_manifest_sha256": "d37de697a43fc8f26d129e9ea3ebf693d861513ae55bd7b7a354d35eee7ba00b",
   "source_repository": "https://github.com/cgotelli/AVAC-Desktop",
-  "source_tree_sha256": "3f80e4b1052b4600422b8833bcac3deafe9ed4b1286ac40e495541b6827d84b4",
+  "source_tree_sha256": "ff3b439c3a0ccbee5e84094838c0ef592f2a4118042ed58818b50de311391fcb",
   "python_layout": "compact-clawpack-packages-v1",
-  "build_toolchain": "WinLibs GCC 13.2.0 / MinGW-w64 11.0.1 UCRT POSIX SEH r8"
+  "build_toolchain": "WinLibs GCC 13.2.0 / MinGW-w64 11.0.1 UCRT POSIX SEH r8",
+  "runtime_libraries": "MSYS2 UCRT GCC 16.2.0-6 with libgfortran locale fix; winpthreads 14.0.0.r495.g63ebe6cdb-2; dlfcn-win32 1.4.1"
 }

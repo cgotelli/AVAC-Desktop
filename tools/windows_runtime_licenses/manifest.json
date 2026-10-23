@@ -1,30 +1,138 @@
 {
   "format": 1,
-  "toolchain": "WinLibs GCC 13.2.0 / MinGW-w64 11.0.1 UCRT POSIX SEH r8, 2024-05-04",
+  "toolchain": "GCC 13.2.0 solver compiler; MSYS2 UCRT GCC 16.2.0-6 runtime libraries, winpthreads 14.0.0.r495.g63ebe6cdb-2; WinLibs dlfcn-win32 1.4.1",
   "toolchain_release": "https://github.com/brechtsanders/winlibs_mingw/releases/tag/13.2.0posix-18.1.5-11.0.1-ucrt-r8",
   "source_access": {
     "gcc": "https://gcc.gnu.org/pub/gcc/releases/gcc-13.2.0/gcc-13.2.0.tar.xz",
     "mingw_w64": "https://github.com/mingw-w64/mingw-w64/tree/v11.0.1",
     "dlfcn_win32": "https://github.com/dlfcn-win32/dlfcn-win32/tree/v1.4.1",
-    "winlibs_build_recipes": "https://github.com/brechtsanders/winlibs_recipes/tree/52ea7e3801c3de4568077b28487dbbca506b56b1"
+    "winlibs_build_recipes": "https://github.com/brechtsanders/winlibs_recipes/tree/52ea7e3801c3de4568077b28487dbbca506b56b1",
+    "msys2_gcc": "https://mirror.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst",
+    "msys2_winpthreads": "https://mirror.msys2.org/mingw/sources/mingw-w64-winpthreads-14.0.0.r495.g63ebe6cdb-2.src.tar.zst"
   },
-  "scope": "License texts and source-access references for these exact unmodified DLL bytes. GCC runtime-exception and libquadmath LGPL notices are distinct. The WinLibs recipe snapshot identifies dlfcn-win32 1.4.1. No compiler or DLL rebuild is performed by packaging.",
+  "scope": "Unmodified DLLs pinned below. Solvers retain the GCC 13.2.0 compiler; MSYS2 GCC 16.2.0-6 supplies the ABI-compatible runtime with both libgfortran locale fixes (GCC PR121759). Packages, licenses and exact source recipes/patches are retained. No end-user toolchain or locale change is required.",
   "libraries": {
     "libdl.dll": "5371648a682af6c79544a0799fca73a3363c20c59d59a7d29fd9f9230032bc0e",
-    "libgcc_s_seh-1.dll": "89f1eaf8576f691e1aafc8707173618a74b8c82d6d0ac17a1be62c76a6c79aa1",
-    "libgfortran-5.dll": "211b9a2d096d7a6ede71c444b557860a992f027f34390f88280f74d408cb5f0e",
-    "libgomp-1.dll": "796b4f63a78769783923d3d5bc682c263d7a16284471f1028a4003cd2db7a2c0",
-    "libquadmath-0.dll": "452542573b8d81725086742d69b7eb135d83ab77f1f872fd05fac83cf4da59a1",
-    "libwinpthread-1.dll": "4bde68fbb2c6a9a64535928fc505056ebf6f5dc44f82ea2eaac3c714dc22ce79"
+    "libgcc_s_seh-1.dll": "791ebf66e99c7c1b4ed3666468cec45a0172b4c8942ac6c84c3e9cab3e1b5270",
+    "libgfortran-5.dll": "c6efba147926b0897a791d081cbc3c266967e7d63c5b325df5f8f14a3e91b62f",
+    "libgomp-1.dll": "ccaf59dc8cff15ace88ab47acd68a5b014167cad8f960e7683466a4c821e41c4",
+    "libquadmath-0.dll": "802010365378b7421a7c3d61dabf2a46d8a3c8b71950ddeb4b5fefb32f117f4c",
+    "libwinpthread-1.dll": "817e5b2636f532666e8f255e225af75e9d0c41b141512fde45264070a65b1c92"
   },
   "files": [
-    {"path": "gcc-COPYING3", "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903", "url": "https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-13.2.0/COPYING3"},
-    {"path": "gcc-COPYING.LIB", "sha256": "a9bdde5616ecdd1e980b44f360600ee8783b1f99b8cc83a2beb163a0a390e861", "url": "https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-13.2.0/COPYING.LIB"},
-    {"path": "gcc-COPYING.RUNTIME", "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74", "url": "https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-13.2.0/COPYING.RUNTIME"},
-    {"path": "libquadmath-COPYING.LIB", "sha256": "32434afcc8666ba060e111d715bfdb6c2d5dd8a35fa4d3ab8ad67d8f850d2f2b", "url": "https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-13.2.0/libquadmath/COPYING.LIB"},
-    {"path": "mingw-w64-COPYING", "sha256": "99a69660981156c21336fdb5661f89341b013c94e4bf9e1c7467b4745718397f", "url": "https://raw.githubusercontent.com/mingw-w64/mingw-w64/v11.0.1/COPYING"},
-    {"path": "winpthreads-COPYING", "sha256": "63263614cdd29f2f93cba85e992f041b31f9fc7b4033692f31269489a8a1b177", "url": "https://raw.githubusercontent.com/mingw-w64/mingw-w64/v11.0.1/mingw-w64-libraries/winpthreads/COPYING"},
-    {"path": "dlfcn-win32-COPYING", "sha256": "4cc7ac997b9293db5919baf630100cc09b3508efdfe6a6611c95511fb863b3c7", "url": "https://raw.githubusercontent.com/dlfcn-win32/dlfcn-win32/v1.4.1/COPYING"},
-    {"path": "dlfcn-win32-dlfcn.c", "sha256": "0b7a7e71d4beeef7df6ad9422da7b311bb15edd05ac7016d2d93fa8f90a4944e", "url": "https://raw.githubusercontent.com/dlfcn-win32/dlfcn-win32/v1.4.1/src/dlfcn.c"}
-  ]
+    {
+      "path": "gcc-COPYING3",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "url": "https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-13.2.0/COPYING3"
+    },
+    {
+      "path": "gcc-COPYING.LIB",
+      "sha256": "a9bdde5616ecdd1e980b44f360600ee8783b1f99b8cc83a2beb163a0a390e861",
+      "url": "https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-13.2.0/COPYING.LIB"
+    },
+    {
+      "path": "gcc-COPYING.RUNTIME",
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
+      "url": "https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-13.2.0/COPYING.RUNTIME"
+    },
+    {
+      "path": "libquadmath-COPYING.LIB",
+      "sha256": "32434afcc8666ba060e111d715bfdb6c2d5dd8a35fa4d3ab8ad67d8f850d2f2b",
+      "url": "https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-13.2.0/libquadmath/COPYING.LIB"
+    },
+    {
+      "path": "mingw-w64-COPYING",
+      "sha256": "99a69660981156c21336fdb5661f89341b013c94e4bf9e1c7467b4745718397f",
+      "url": "https://raw.githubusercontent.com/mingw-w64/mingw-w64/v11.0.1/COPYING"
+    },
+    {
+      "path": "winpthreads-COPYING",
+      "sha256": "63263614cdd29f2f93cba85e992f041b31f9fc7b4033692f31269489a8a1b177",
+      "url": "https://raw.githubusercontent.com/mingw-w64/mingw-w64/v11.0.1/mingw-w64-libraries/winpthreads/COPYING"
+    },
+    {
+      "path": "dlfcn-win32-COPYING",
+      "sha256": "4cc7ac997b9293db5919baf630100cc09b3508efdfe6a6611c95511fb863b3c7",
+      "url": "https://raw.githubusercontent.com/dlfcn-win32/dlfcn-win32/v1.4.1/COPYING"
+    },
+    {
+      "path": "dlfcn-win32-dlfcn.c",
+      "sha256": "0b7a7e71d4beeef7df6ad9422da7b311bb15edd05ac7016d2d93fa8f90a4944e",
+      "url": "https://raw.githubusercontent.com/dlfcn-win32/dlfcn-win32/v1.4.1/src/dlfcn.c"
+    },
+    {
+      "path": "msys2-libgcc-COPYING.RUNTIME",
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
+      "url": "https://mirror.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst#ucrt64/share/licenses/libgcc/COPYING.RUNTIME"
+    },
+    {
+      "path": "msys2-libgcc-COPYING3",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "url": "https://mirror.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst#ucrt64/share/licenses/libgcc/COPYING3"
+    },
+    {
+      "path": "msys2-libgfortran-COPYING.RUNTIME",
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
+      "url": "https://mirror.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst#ucrt64/share/licenses/libgfortran/COPYING.RUNTIME"
+    },
+    {
+      "path": "msys2-libgfortran-COPYING3",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "url": "https://mirror.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst#ucrt64/share/licenses/libgfortran/COPYING3"
+    },
+    {
+      "path": "msys2-libgomp-COPYING.RUNTIME",
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
+      "url": "https://mirror.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst#ucrt64/share/licenses/libgomp/COPYING.RUNTIME"
+    },
+    {
+      "path": "msys2-libgomp-COPYING3",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "url": "https://mirror.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst#ucrt64/share/licenses/libgomp/COPYING3"
+    },
+    {
+      "path": "msys2-libquadmath-COPYING.LIB",
+      "sha256": "32434afcc8666ba060e111d715bfdb6c2d5dd8a35fa4d3ab8ad67d8f850d2f2b",
+      "url": "https://mirror.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst#ucrt64/share/licenses/libquadmath/COPYING.LIB"
+    },
+    {
+      "path": "msys2-libwinpthread-COPYING",
+      "sha256": "63263614cdd29f2f93cba85e992f041b31f9fc7b4033692f31269489a8a1b177",
+      "url": "https://mirror.msys2.org/mingw/sources/mingw-w64-winpthreads-14.0.0.r495.g63ebe6cdb-2.src.tar.zst#ucrt64/share/licenses/libwinpthread/COPYING"
+    }
+  ],
+  "compiler": "WinLibs GCC 13.2.0 / MinGW-w64 11.0.1 UCRT POSIX SEH r8",
+  "runtime_packages": [
+    {
+      "name": "libgfortran",
+      "version": "16.2.0-6",
+      "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-libgfortran-16.2.0-6-any.pkg.tar.zst",
+      "sha256": "34406a0c721e44655c3971ce131efd81652d5f6fa5381eb5700b288bc9a780ab"
+    },
+    {
+      "name": "libgcc",
+      "version": "16.2.0-6",
+      "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-libgcc-16.2.0-6-any.pkg.tar.zst",
+      "sha256": "80b2497f019977dd9528b1abc8621b1328a0115ab1f724047ccbb56bf323f11d"
+    },
+    {
+      "name": "libquadmath",
+      "version": "16.2.0-6",
+      "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-libquadmath-16.2.0-6-any.pkg.tar.zst",
+      "sha256": "7b553c0b6dd9cf2f676c0c6812aa359495940dbdd7347f47be1dbd75d29cd611"
+    },
+    {
+      "name": "libgomp",
+      "version": "16.2.0-6",
+      "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-libgomp-16.2.0-6-any.pkg.tar.zst",
+      "sha256": "809b95086d8d3ba145e041bb36d5756b4407d1d97c0524ef731d3b94548faa69"
+    },
+    {
+      "name": "libwinpthread",
+      "version": "14.0.0.r495.g63ebe6cdb-2",
+      "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-libwinpthread-14.0.0.r495.g63ebe6cdb-2-any.pkg.tar.zst",
+      "sha256": "0cee80308aec93607165be8c8655c1c3884389e0c2829b022643de7988d8b1f9"
+    }
+  ],
+  "locale_fix": "https://github.com/msys2/MINGW-packages/pull/30705"
 }
